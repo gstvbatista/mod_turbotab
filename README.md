@@ -4,7 +4,7 @@
 
 It provides:
 
-- Erlang B, extended Erlang B, Engset B, and Erlang C calculations
+- Erlang B, extended Erlang B, Engset B, Erlang C, and Erlang A (abandonment) calculations
 - Queueing metrics such as queued percentage, queue size, queue wait time, and achieved SLA
 - Staffing metrics such as required agents, ASA, and call capacity
 - Trunk sizing utilities for telephony capacity planning
@@ -78,7 +78,7 @@ INTERVAL = 600.0
 
 That means the default model works in **600-second buckets** (10 minutes).
 
-Several function arguments are named `calls_per_hour`, but the implementation actually uses:
+All functions that accept a volume parameter use `calls_per_interval` — the number of arrivals per configured interval:
 
 ```math
 A = \frac{\lambda \cdot \mathrm{AHT}}{\mathrm{INTERVAL}}
@@ -91,12 +91,7 @@ where:
 - `AHT` = average handle time in seconds
 - `INTERVAL` = default `600` seconds
 
-So, with the code exactly as it exists today:
-
-- if `INTERVAL = 600`, interpret `calls_per_hour` as "calls per 10-minute interval"
-- if you want true hourly semantics, either:
-  - convert hourly arrivals into the configured interval before calling the functions, or
-  - change `INTERVAL` in `config.py` before using the package
+With the default `INTERVAL = 600`, pass the number of calls per 10-minute bucket. If you want hourly semantics, change `INTERVAL` in `config.py` to `3600`.
 
 ## Mathematical Model
 
@@ -191,6 +186,19 @@ C(N, A) = \frac{B(N, A)}{\left(\frac{A}{N}\right) B(N, A) + \left(1 - \frac{A}{N
 
 This is the probability that an arrival has to wait.
 
+### Erlang A (Abandonment)
+
+The Erlang A model (M/M/N+M) extends Erlang C by modeling caller patience. Callers who wait beyond their patience threshold abandon the queue with rate `θ = 1/patience`.
+
+Key metrics:
+
+- **Probability of waiting:** adjusted from Erlang C using abandonment rate
+- **ASA:** reduced by abandonment (impatient callers leave, shortening the queue)
+- **Abandon rate:** `P(abandon) = P(wait) · (1 - e^(-θ · expected_wait))`
+- **SLA:** `SLA(t) = 1 - P(wait) · min(e^((A-N)/h · t), e^(-θ · t))`
+
+All functions that support Erlang A accept an optional `patience` parameter (in seconds). When `patience=None` (default), pure Erlang C is used.
+
 ### Queue wait time and SLA
 
 For a given number of agents:
@@ -265,9 +273,18 @@ print("service_time for 90% SLA:", service_time(agents, 0.90, calls, aht))
 print("call_capacity:", call_capacity(agents, sla, target_time, aht))
 print("fractional_agents:", round(fractional_agents(sla, target_time, calls, aht), 4))
 print("trunks_required:", trunks_required(agents, calls, aht))
+
+# Erlang A — with 60s average patience
+from mod_turbotab.calculations.erlang import erlang_a
+
+agents_patience = agents_required(sla, target_time, calls, aht, patience=60)
+print("\n--- Erlang A (patience=60s) ---")
+print("agents_required:", agents_patience)
+print("asa:", asa(agents_patience, calls, aht, patience=60))
+print("sla_metric:", round(sla_metric(agents_patience, target_time, calls, aht, patience=60), 6))
 ```
 
-Observed output with the current code:
+Observed output:
 
 ```text
 agents_required: 11
@@ -275,10 +292,15 @@ asa: 9
 queued: 0.175807
 queue_time: 51
 sla_metric: 0.880836
-service_time for 90% SLA: 22
+service_time for 90% SLA: 29
 call_capacity: 27.0
 fractional_agents: 10.2852
 trunks_required: 18
+
+--- Erlang A (patience=60s) ---
+agents_required: 11
+asa: 5
+sla_metric: 0.880836
 ```
 
 ## API Reference
@@ -317,6 +339,15 @@ Formula:
 C(N, A) = \frac{B(N, A)}{\left(\frac{A}{N}\right) B(N, A) + \left(1 - \frac{A}{N}\right)}
 ```
 
+#### `erlang_a(servers, intensity, patience, aht) -> dict`
+
+Returns a dictionary with Erlang A (M/M/N+M) abandonment metrics:
+
+- `pw` — probability of waiting (adjusted for abandonment)
+- `asa` — average speed of answer in seconds
+- `abandon_rate` — fraction of calls that abandon
+- `sla` — callable `sla(t)` returning the SLA achieved at target time `t`
+
 ### `calculations.traffic`
 
 #### `traffic(servers, blocking) -> float`
@@ -337,7 +368,7 @@ Internal helper used by `traffic()` to refine the search interval.
 
 ### `queues.queues`
 
-#### `queued(agents, calls_per_hour, aht) -> float`
+#### `queued(agents, calls_per_interval, aht, patience=None) -> float`
 
 Returns the fraction of arrivals that queue.
 
@@ -347,7 +378,7 @@ Formula:
 \mathrm{queued} = C(N, A)
 ```
 
-#### `queue_size(agents, calls_per_hour, aht) -> int`
+#### `queue_size(agents, calls_per_interval, aht, patience=None) -> int`
 
 Returns the mean queue size, rounded to the nearest integer.
 
@@ -357,7 +388,7 @@ Formula:
 Q = \frac{\rho C(N, A)}{1 - \rho}
 ```
 
-#### `queue_time(agents, calls_per_hour, aht) -> int`
+#### `queue_time(agents, calls_per_interval, aht, patience=None) -> int`
 
 Returns mean waiting time in seconds.
 
@@ -373,23 +404,21 @@ Returned value:
 \mathrm{queue\_time\_seconds} = \mathrm{round}(W_q \cdot I)
 ```
 
-#### `service_time(agents, sla, calls_per_hour, aht) -> int`
+#### `service_time(agents, sla, calls_per_interval, aht, patience=None) -> int`
 
 Returns the answer-time threshold required to meet a desired SLA for a fixed staffing level.
 
-Important: the current implementation uses the following approximation rather than solving the `sla_metric()` equation exactly:
+Uses the exact algebraic inverse of `sla_metric()`:
 
 ```math
-qtime = \frac{I}{N \mu (1 - \rho)}
+t = \frac{h \cdot \ln\left(\frac{1 - \mathrm{SLA}}{C(N, A)}\right)}{A - N}
 ```
 
-```math
-t \approx qtime \left(1 - \frac{1 - \mathrm{SLA}}{C(N, A)}\right)
-```
+When `patience` is provided, uses binary search over the Erlang A SLA function instead.
 
-This function raises `CalculationError` when the requested SLA is already satisfied without queueing pressure.
+Returns `0` when the SLA is already met without queueing pressure. Raises `CalculationError` when the system is overloaded (`A >= N`).
 
-#### `sla_metric(agents, service_time_val, calls_per_hour, aht) -> float`
+#### `sla_metric(agents, service_time_val, calls_per_interval, aht, patience=None) -> float`
 
 Returns achieved service level for a target answer time.
 
@@ -401,7 +430,7 @@ Formula:
 
 ### `agents.capacity`
 
-#### `agents_required(sla, service_time, calls_per_hour, aht) -> int`
+#### `agents_required(sla, service_time, calls_per_interval, aht, patience=None) -> int`
 
 Returns the smallest integer number of agents such that:
 
@@ -409,15 +438,9 @@ Returns the smallest integer number of agents such that:
 \mathrm{SLA}(t) \ge \mathrm{target\_sla}
 ```
 
-The function begins near the offered load:
+Uses binary search with a doubling upper bound for O(log N) performance. When `patience` is provided, uses Erlang A instead of Erlang C for the SLA check.
 
-```math
-N_0 \approx \max(1, \mathrm{round}(A))
-```
-
-and then increases `N` until the SLA condition is met.
-
-#### `asa(agents, calls_per_hour, aht) -> int`
+#### `asa(agents, calls_per_interval, aht, patience=None) -> int`
 
 Returns ASA in seconds.
 
@@ -427,7 +450,7 @@ Formula:
 \mathrm{ASA} = \frac{C(N, A)}{N \mu (1 - \rho)}
 ```
 
-#### `agents_asa(asa_target, calls_per_hour, aht) -> int`
+#### `agents_asa(asa_target, calls_per_interval, aht) -> int`
 
 Returns the smallest integer number of agents such that:
 
@@ -435,13 +458,17 @@ Returns the smallest integer number of agents such that:
 \mathrm{ASA}(N) \le \mathrm{asa\_target}
 ```
 
-#### `nb_agents(calls_ph, avg_sa, avg_ht) -> int`
+Uses binary search with a doubling upper bound.
 
-Brute-force search over agent counts until:
+#### `nb_agents(calls_per_interval, avg_sa, avg_ht) -> int`
+
+Returns the smallest integer number of agents such that:
 
 ```math
 \mathrm{ASA}(N) \le \mathrm{avg\_sa}
 ```
+
+Uses binary search with a doubling upper bound.
 
 #### `call_capacity(no_agents, sla, service_time, aht) -> float`
 
@@ -458,7 +485,7 @@ Algorithm:
 2. Recompute `agents_required(...)`.
 3. Decrease call volume until the required agent count no longer exceeds `no_agents`.
 
-#### `fractional_agents(sla, service_time, calls_per_hour, aht) -> float`
+#### `fractional_agents(sla, service_time, calls_per_interval, aht, patience=None) -> float`
 
 Returns a fractional staffing estimate by linearly interpolating between the last staffing level below target and the first staffing level above target.
 
@@ -486,7 +513,7 @@ B(T, A) < 0.001
 
 where `T >= ceil(servers)`.
 
-#### `trunks_required(agents, calls_per_hour, aht) -> int`
+#### `trunks_required(agents, calls_per_interval, aht) -> int`
 
 Estimates telephony trunks needed for a staffed system.
 
@@ -545,6 +572,11 @@ mod_turbotab/
 ├── calculations/
 │   ├── erlang.py
 │   └── traffic.py
+├── coming_soon/
+│   ├── intraday_simulation.md
+│   ├── multi_skill_erlang_c.md
+│   ├── occupancy_cap.md
+│   └── shrinkage_absenteeism.md
 ├── queues/
 │   └── queues.py
 ├── trunks/
@@ -579,12 +611,11 @@ except CalculationError:
 These are worth knowing before you build on top of the library:
 
 - The package is not yet packaged for installation with `pip`.
-- Function names such as `calls_per_hour` are misleading unless `INTERVAL` is changed to `3600`.
 - Some zero-value edge cases are not handled cleanly. For example, `agents=0` or `servers=0` may lead to wrapped runtime errors rather than a clean validation failure.
 - `number_trunks()` uses a fixed blocking threshold of `0.001`; it is not configurable.
-- `service_time()` uses an approximation, not the exact inverse of `sla_metric()`.
-- `agents_asa()` increments staffing during its search but does not recompute utilization inside the loop, so treat it cautiously until corrected.
+- No multi-skill routing model (see `coming_soon/multi_skill_erlang_c.md`).
+- No shrinkage/absenteeism factor (see `coming_soon/shrinkage_absenteeism.md`).
 
 ## Summary
 
-`mod_turbotab` is a compact Erlang-based planning library with solid building blocks for queueing, staffing, SLA, ASA, traffic intensity, and trunk sizing. The codebase is small enough to understand quickly, and the formulas above map directly to what the repository actually computes today.
+`mod_turbotab` is a compact Erlang-based planning library with building blocks for queueing, staffing, SLA, ASA, traffic intensity, trunk sizing, and abandonment modeling (Erlang A). The codebase is small enough to understand quickly, and the formulas above map directly to what the repository actually computes today.

@@ -112,6 +112,7 @@ def agents_asa(asa_target: float, calls_per_interval: float, aht: int) -> int:
             utilisation = traffic_rate / no_agents
         max_iterate: int = no_agents * 100
         for _ in range(max_iterate):
+            utilisation = traffic_rate / no_agents
             c: float = erlang_c(no_agents, traffic_rate)
             answer_time: float = c / (no_agents * death_rate * (1 - utilisation))
             if (answer_time * INTERVAL) <= asa_target:

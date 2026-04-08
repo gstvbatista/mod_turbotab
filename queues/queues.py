@@ -8,12 +8,12 @@ from mod_turbotab.utils import secs, min_max
 from mod_turbotab.exceptions import CalculationError, InputValidationError
 from mod_turbotab.config import INTERVAL
 
-def queued(agents: float, calls_per_hour: float, aht: int) -> float:
+def queued(agents: float, calls_per_interval: float, aht: int) -> float:
     """Calcula o percentual de chamadas que ficarão enfileiradas.
 
     Args:
         agents (float): Número de agentes.
-        calls_per_hour (float): Chamadas por hora.
+        calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
         aht (int): Duração média da chamada (em segundos).
 
     Returns:
@@ -22,10 +22,10 @@ def queued(agents: float, calls_per_hour: float, aht: int) -> float:
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
     """
-    if agents < 0 or calls_per_hour < 0 or aht <= 0:
+    if agents < 0 or calls_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para queued.")
     try:
-        birth_rate: float = calls_per_hour
+        birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
         q: float = erlang_c(agents, traffic_rate)
@@ -33,12 +33,12 @@ def queued(agents: float, calls_per_hour: float, aht: int) -> float:
     except Exception as e:
         raise CalculationError(f"Erro em queued: {str(e)}") from e
 
-def queue_size(agents: float, calls_per_hour: float, aht: int) -> int:
+def queue_size(agents: float, calls_per_interval: float, aht: int) -> int:
     """Calcula o tamanho médio da fila (número de chamadas).
 
     Args:
         agents (float): Número de agentes.
-        calls_per_hour (float): Chamadas por hora.
+        calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
         aht (int): Duração média da chamada (em segundos).
 
     Returns:
@@ -47,10 +47,10 @@ def queue_size(agents: float, calls_per_hour: float, aht: int) -> int:
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
     """
-    if agents < 0 or calls_per_hour < 0 or aht <= 0:
+    if agents < 0 or calls_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para queue_size.")
     try:
-        birth_rate: float = calls_per_hour
+        birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
         utilisation: float = traffic_rate / agents
@@ -62,12 +62,12 @@ def queue_size(agents: float, calls_per_hour: float, aht: int) -> int:
     except Exception as e:
         raise CalculationError(f"Erro em queue_size: {str(e)}") from e
 
-def queue_time(agents: float, calls_per_hour: float, aht: int) -> int:
+def queue_time(agents: float, calls_per_interval: float, aht: int) -> int:
     """Calcula o tempo médio de espera na fila (em segundos).
 
     Args:
         agents (float): Número de agentes.
-        calls_per_hour (float): Chamadas por hora.
+        calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
         aht (int): Duração média da chamada (em segundos).
 
     Returns:
@@ -76,10 +76,10 @@ def queue_time(agents: float, calls_per_hour: float, aht: int) -> int:
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
     """
-    if agents < 0 or calls_per_hour < 0 or aht <= 0:
+    if agents < 0 or calls_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para queue_time.")
     try:
-        birth_rate: float = calls_per_hour
+        birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
         utilisation: float = traffic_rate / agents
@@ -90,13 +90,13 @@ def queue_time(agents: float, calls_per_hour: float, aht: int) -> int:
     except Exception as e:
         raise CalculationError(f"Erro em queue_time: {str(e)}") from e
 
-def service_time(agents: float, sla: float, calls_per_hour: float, aht: int) -> int:
+def service_time(agents: float, sla: float, calls_per_interval: float, aht: int) -> int:
     """Calcula o tempo médio de espera para que uma dada porcentagem de chamadas seja atendida.
 
     Args:
         agents (float): Número de agentes.
         sla (float): SLA alvo (ex: 0.85).
-        calls_per_hour (float): Chamadas por hora.
+        calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
         aht (int): Duração média da chamada (em segundos).
 
     Returns:
@@ -106,11 +106,11 @@ def service_time(agents: float, sla: float, calls_per_hour: float, aht: int) -> 
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if agents < 0 or sla < 0 or calls_per_hour < 0 or aht <= 0:
+    if agents < 0 or sla < 0 or calls_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para service_time.")
     try:
         adjust: float = 0.0
-        birth_rate: float = calls_per_hour
+        birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
         c: float = erlang_c(agents, traffic_rate)
@@ -127,13 +127,13 @@ def service_time(agents: float, sla: float, calls_per_hour: float, aht: int) -> 
     except Exception as e:
         raise CalculationError(f"Erro em service_time: {str(e)}") from e
 
-def sla_metric(agents: float, service_time_val: float, calls_per_hour: float, aht: int) -> float:
+def sla_metric(agents: float, service_time_val: float, calls_per_interval: float, aht: int) -> float:
     """Calcula o SLA alcançado para um número dado de agentes.
 
     Args:
         agents (float): Número de agentes.
         service_time_val (float): Tempo alvo de atendimento (em segundos).
-        calls_per_hour (float): Chamadas por hora.
+        calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
         aht (int): Duração média da chamada (em segundos).
 
     Returns:
@@ -143,10 +143,10 @@ def sla_metric(agents: float, service_time_val: float, calls_per_hour: float, ah
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if agents < 0 or calls_per_hour < 0 or aht <= 0 or service_time_val < 0:
+    if agents < 0 or calls_per_interval < 0 or aht <= 0 or service_time_val < 0:
         raise InputValidationError("Parâmetros inválidos para sla_metric.")
     try:
-        birth_rate: float = calls_per_hour
+        birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
         utilisation: float = traffic_rate / agents

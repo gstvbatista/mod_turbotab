@@ -5,7 +5,6 @@ Contém funções como number_trunks e trunks_required, com validação de entra
 tratamento de exceções personalizado e tipagem completa.
 """
 
-from mod_turbotab.config import INTERVAL
 from mod_turbotab.utils import int_ceiling, secs
 from mod_turbotab.calculations.erlang import erlang_b, erlang_c
 from mod_turbotab.exceptions import CalculationError, InputValidationError
@@ -38,13 +37,14 @@ def number_trunks(servers: float, intensity: float) -> int:
     except Exception as e:
         raise CalculationError(f"Erro ao calcular o número de trunks: {str(e)}") from e
 
-def trunks_required(agents: float, calls_per_interval: float, aht: int) -> int:
+def trunks_required(agents: float, calls_per_interval: float, aht: int, interval: float = 600.0) -> int:
     """Calcula o número de trunks necessários para atender o volume de chamadas.
 
     Args:
         agents (float): Número de agentes.
-        calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
+        calls_per_interval (float): Chamadas por intervalo.
         aht (int): Duração média da chamada (em segundos).
+        interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
 
     Returns:
         int: Número de trunks necessários.
@@ -58,14 +58,14 @@ def trunks_required(agents: float, calls_per_interval: float, aht: int) -> int:
     
     try:
         birth_rate: float = calls_per_interval
-        death_rate: float = INTERVAL / aht
+        death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         utilisation: float = traffic_rate / agents
         if utilisation >= 1:
             utilisation = 0.99
         c: float = erlang_c(agents, traffic_rate)
         answer_time: float = c / (agents * death_rate * (1 - utilisation))
-        r: float = birth_rate / (INTERVAL / (aht + secs(answer_time)))
+        r: float = birth_rate / (interval / (aht + secs(answer_time, interval)))
         no_trunks: int = number_trunks(agents, r)
         if no_trunks < 1 and traffic_rate > 0:
             no_trunks = 1

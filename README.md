@@ -70,28 +70,30 @@ python3 your_script.py
 
 This section matters more than anything else in the README.
 
-The library uses a global planning interval defined in [`config.py`](config.py):
+Every function that works with call volumes accepts an `interval` parameter (default `600.0` — 10 minutes). This defines the planning bucket size in seconds.
 
-```python
-INTERVAL = 600.0
-```
-
-That means the default model works in **600-second buckets** (10 minutes).
-
-All functions that accept a volume parameter use `calls_per_interval` — the number of arrivals per configured interval:
+All functions that accept a volume parameter use `calls_per_interval` — the number of arrivals per interval:
 
 ```math
-A = \frac{\lambda \cdot \mathrm{AHT}}{\mathrm{INTERVAL}}
+A = \frac{\lambda \cdot \mathrm{AHT}}{\mathrm{interval}}
 ```
 
 where:
 
 - `A` = offered traffic in erlangs
-- `lambda` = arrival volume per configured interval
+- `lambda` = arrival volume per interval
 - `AHT` = average handle time in seconds
-- `INTERVAL` = default `600` seconds
+- `interval` = planning bucket in seconds (default `600`)
 
-With the default `INTERVAL = 600`, pass the number of calls per 10-minute bucket. If you want hourly semantics, change `INTERVAL` in `config.py` to `3600`.
+With the default `interval=600`, pass the number of calls per 10-minute bucket. For hourly semantics, pass `interval=3600`:
+
+```python
+# 10-minute buckets (default)
+agents_required(0.80, 20, 25, 180)
+
+# Hourly buckets
+agents_required(0.80, 20, 150, 180, interval=3600)
+```
 
 ## Mathematical Model
 
@@ -102,7 +104,7 @@ Throughout the README:
 - `N` = number of agents, servers, or trunks depending on the function
 - `lambda` = arrival volume per configured interval
 - `h` = average handle time (`AHT`) in seconds
-- `I` = configured interval in seconds (`INTERVAL`)
+- `I` = interval in seconds (function parameter, default `600`)
 - `mu` = service completions per interval per server
 - `A` = offered traffic in erlangs
 - `rho` = utilization
@@ -207,7 +209,7 @@ For a given number of agents:
 W_q = \frac{1}{N \mu (1 - \rho)}
 ```
 
-The implementation then converts `W_q` back into seconds by multiplying by `INTERVAL`.
+The implementation then converts `W_q` back into seconds by multiplying by `interval`.
 
 The SLA function implemented in the code is:
 
@@ -229,14 +231,11 @@ Average Speed of Answer is implemented as:
 \mathrm{ASA} = \frac{C(N, A)}{N \mu (1 - \rho)}
 ```
 
-and is returned in seconds after multiplying by `INTERVAL` and rounding.
+and is returned in seconds after multiplying by `interval` and rounding.
 
 ## Worked Example
 
-With the repository in its current default configuration:
-
-- `INTERVAL = 600`
-- calls are interpreted per 10-minute bucket
+With the default `interval=600` (10-minute buckets):
 
 Example inputs:
 
@@ -257,7 +256,7 @@ from mod_turbotab.agents.capacity import (
 from mod_turbotab.queues.queues import queued, queue_time, sla_metric, service_time
 from mod_turbotab.trunks.trunks import trunks_required
 
-calls = 25          # per INTERVAL, not per clock hour when INTERVAL=600
+calls = 25          # per 10-minute bucket (default interval=600)
 aht = 180           # seconds
 sla = 0.80
 target_time = 20    # seconds
@@ -368,7 +367,7 @@ Internal helper used by `traffic()` to refine the search interval.
 
 ### `queues.queues`
 
-#### `queued(agents, calls_per_interval, aht, patience=None) -> float`
+#### `queued(agents, calls_per_interval, aht, interval=600.0, patience=None) -> float`
 
 Returns the fraction of arrivals that queue.
 
@@ -378,7 +377,7 @@ Formula:
 \mathrm{queued} = C(N, A)
 ```
 
-#### `queue_size(agents, calls_per_interval, aht, patience=None) -> int`
+#### `queue_size(agents, calls_per_interval, aht, interval=600.0, patience=None) -> int`
 
 Returns the mean queue size, rounded to the nearest integer.
 
@@ -388,7 +387,7 @@ Formula:
 Q = \frac{\rho C(N, A)}{1 - \rho}
 ```
 
-#### `queue_time(agents, calls_per_interval, aht, patience=None) -> int`
+#### `queue_time(agents, calls_per_interval, aht, interval=600.0, patience=None) -> int`
 
 Returns mean waiting time in seconds.
 
@@ -404,7 +403,7 @@ Returned value:
 \mathrm{queue\_time\_seconds} = \mathrm{round}(W_q \cdot I)
 ```
 
-#### `service_time(agents, sla, calls_per_interval, aht, patience=None) -> int`
+#### `service_time(agents, sla, calls_per_interval, aht, interval=600.0, patience=None) -> int`
 
 Returns the answer-time threshold required to meet a desired SLA for a fixed staffing level.
 
@@ -418,7 +417,7 @@ When `patience` is provided, uses binary search over the Erlang A SLA function i
 
 Returns `0` when the SLA is already met without queueing pressure. Raises `CalculationError` when the system is overloaded (`A >= N`).
 
-#### `sla_metric(agents, service_time_val, calls_per_interval, aht, patience=None) -> float`
+#### `sla_metric(agents, service_time_val, calls_per_interval, aht, interval=600.0, patience=None) -> float`
 
 Returns achieved service level for a target answer time.
 
@@ -430,7 +429,7 @@ Formula:
 
 ### `agents.capacity`
 
-#### `agents_required(sla, service_time, calls_per_interval, aht, patience=None) -> int`
+#### `agents_required(sla, service_time, calls_per_interval, aht, interval=600.0, patience=None) -> int`
 
 Returns the smallest integer number of agents such that:
 
@@ -440,7 +439,7 @@ Returns the smallest integer number of agents such that:
 
 Uses binary search with a doubling upper bound for O(log N) performance. When `patience` is provided, uses Erlang A instead of Erlang C for the SLA check.
 
-#### `asa(agents, calls_per_interval, aht, patience=None) -> int`
+#### `asa(agents, calls_per_interval, aht, interval=600.0, patience=None) -> int`
 
 Returns ASA in seconds.
 
@@ -450,7 +449,7 @@ Formula:
 \mathrm{ASA} = \frac{C(N, A)}{N \mu (1 - \rho)}
 ```
 
-#### `agents_asa(asa_target, calls_per_interval, aht) -> int`
+#### `agents_asa(asa_target, calls_per_interval, aht, interval=600.0) -> int`
 
 Returns the smallest integer number of agents such that:
 
@@ -460,7 +459,7 @@ Returns the smallest integer number of agents such that:
 
 Uses binary search with a doubling upper bound.
 
-#### `nb_agents(calls_per_interval, avg_sa, avg_ht) -> int`
+#### `nb_agents(calls_per_interval, avg_sa, avg_ht, interval=600.0) -> int`
 
 Returns the smallest integer number of agents such that:
 
@@ -470,7 +469,7 @@ Returns the smallest integer number of agents such that:
 
 Uses binary search with a doubling upper bound.
 
-#### `call_capacity(no_agents, sla, service_time, aht) -> float`
+#### `call_capacity(no_agents, sla, service_time, aht, interval=600.0) -> float`
 
 Approximates the largest call volume supported by a fixed integer staffing level while meeting the SLA target.
 
@@ -485,7 +484,7 @@ Algorithm:
 2. Recompute `agents_required(...)`.
 3. Decrease call volume until the required agent count no longer exceeds `no_agents`.
 
-#### `fractional_agents(sla, service_time, calls_per_interval, aht, patience=None) -> float`
+#### `fractional_agents(sla, service_time, calls_per_interval, aht, interval=600.0, patience=None) -> float`
 
 Returns a fractional staffing estimate by linearly interpolating between the last staffing level below target and the first staffing level above target.
 
@@ -495,7 +494,7 @@ Interpolation used by the code:
 N_{frac} = (N - 1) + \frac{\mathrm{SLA}_{target} - \mathrm{SLA}_{prev}}{\mathrm{SLA}_{curr} - \mathrm{SLA}_{prev}}
 ```
 
-#### `fractional_call_capacity(no_agents, sla, service_time, aht) -> float`
+#### `fractional_call_capacity(no_agents, sla, service_time, aht, interval=600.0) -> float`
 
 Like `call_capacity`, but uses `fractional_agents(...)` during the inverse search.
 
@@ -513,7 +512,7 @@ B(T, A) < 0.001
 
 where `T >= ceil(servers)`.
 
-#### `trunks_required(agents, calls_per_interval, aht) -> int`
+#### `trunks_required(agents, calls_per_interval, aht, interval=600.0) -> int`
 
 Estimates telephony trunks needed for a staffed system.
 
@@ -553,12 +552,11 @@ Converts interval-based time into seconds:
 \mathrm{secs}(x) = \mathrm{round}(x \cdot \mathrm{interval})
 ```
 
-### `config`
+### Internal constants
 
-Current global constants:
+The following constants are defined locally in `calculations/traffic.py` and control the iterative search convergence:
 
 ```python
-INTERVAL = 600.0
 MAX_ACCURACY = 0.00001
 MAX_LOOPS = 100
 ```
@@ -581,7 +579,6 @@ mod_turbotab/
 │   └── queues.py
 ├── trunks/
 │   └── trunks.py
-├── config.py
 ├── exceptions.py
 └── utils.py
 ```

@@ -109,21 +109,21 @@ def service_time(agents: float, sla: float, calls_per_interval: float, aht: int)
     if agents < 0 or sla < 0 or calls_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para service_time.")
     try:
-        adjust: float = 0.0
         birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
+        if traffic_rate >= agents:
+            raise CalculationError("Sistema sobrecarregado: tráfego >= agentes")
         c: float = erlang_c(agents, traffic_rate)
-        if c < (1 - sla):
-            raise CalculationError("Nenhuma chamada enfileirada; tempo de serviço é 0")
-        utilisation: float = traffic_rate / agents
-        if utilisation >= 1:
-            utilisation = 0.99
-        qtime: float = 1 / (agents * death_rate * (1 - utilisation)) * INTERVAL
-        stime: float = qtime * (1 - ((1 - sla) / c))
-        if stime < 0:
-            adjust = 1.0
-        return int(stime + adjust)
+        if c <= 0 or c < (1 - sla):
+            return 0
+        ratio: float = (1 - sla) / c
+        if ratio <= 0:
+            raise CalculationError("Razão inválida para cálculo logarítmico")
+        t: float = aht * math.log(ratio) / (traffic_rate - agents)
+        if t < 0:
+            t = 0.0
+        return int(t + 0.5)
     except Exception as e:
         raise CalculationError(f"Erro em service_time: {str(e)}") from e
 

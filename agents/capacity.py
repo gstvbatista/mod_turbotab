@@ -34,28 +34,28 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
         birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
-        erlangs: int = int((birth_rate * aht) / INTERVAL + 0.5)
-        no_agents: int = 1 if erlangs < 1 else int(erlangs)
-        utilisation: float = traffic_rate / no_agents
-        while utilisation >= 1:
-            no_agents += 1
-            utilisation = traffic_rate / no_agents
-        max_iterate: int = no_agents * 100
-        for _ in range(max_iterate):
-            utilisation = traffic_rate / no_agents
-            if utilisation < 1:
-                if patience is not None:
-                    ea: dict = erlang_a(no_agents, traffic_rate, patience, aht)
-                    sl_queued: float = ea['sla'](service_time)
-                else:
-                    c: float = erlang_c(no_agents, traffic_rate)
-                    sl_queued = 1 - c * math.exp((traffic_rate - no_agents) * service_time / aht)
-                if sl_queued < 0:
-                    sl_queued = 0.0
-                if sl_queued >= sla or sl_queued > (1 - MAX_ACCURACY):
-                    break
-            no_agents += 1
-        return no_agents
+
+        def _sla_at(n: int) -> float:
+            if traffic_rate / n >= 1:
+                return 0.0
+            if patience is not None:
+                ea: dict = erlang_a(n, traffic_rate, patience, aht)
+                return ea['sla'](service_time)
+            c: float = erlang_c(n, traffic_rate)
+            val: float = 1 - c * math.exp((traffic_rate - n) * service_time / aht)
+            return max(val, 0.0)
+
+        lo: int = max(1, int(math.ceil(traffic_rate)) + 1)
+        hi: int = lo
+        while _sla_at(hi) < sla:
+            hi *= 2
+        while lo < hi:
+            mid: int = (lo + hi) // 2
+            if _sla_at(mid) >= sla:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
     except Exception as e:
         raise CalculationError(f"Erro em agents_required: {str(e)}") from e
 
@@ -115,21 +115,26 @@ def agents_asa(asa_target: float, calls_per_interval: float, aht: int) -> int:
         birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
-        erlangs: int = int((birth_rate * aht) / INTERVAL + 0.5)
-        no_agents: int = 1 if erlangs < 1 else int(erlangs)
-        utilisation: float = traffic_rate / no_agents
-        while utilisation >= 1:
-            no_agents += 1
-            utilisation = traffic_rate / no_agents
-        max_iterate: int = no_agents * 100
-        for _ in range(max_iterate):
-            utilisation = traffic_rate / no_agents
-            c: float = erlang_c(no_agents, traffic_rate)
-            answer_time: float = c / (no_agents * death_rate * (1 - utilisation))
-            if (answer_time * INTERVAL) <= asa_target:
-                break
-            no_agents += 1
-        return no_agents
+
+        def _asa_at(n: int) -> float:
+            utilisation: float = traffic_rate / n
+            if utilisation >= 1:
+                return float('inf')
+            c: float = erlang_c(n, traffic_rate)
+            answer_time: float = c / (n * death_rate * (1 - utilisation))
+            return answer_time * INTERVAL
+
+        lo: int = max(1, int(math.ceil(traffic_rate)) + 1)
+        hi: int = lo
+        while _asa_at(hi) > asa_target:
+            hi *= 2
+        while lo < hi:
+            mid: int = (lo + hi) // 2
+            if _asa_at(mid) <= asa_target:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
     except Exception as e:
         raise CalculationError(f"Erro em agents_asa: {str(e)}") from e
 
@@ -151,11 +156,22 @@ def nb_agents(calls_per_interval: float, avg_sa: float, avg_ht: int) -> int:
     if calls_per_interval < 0 or avg_sa < 0 or avg_ht <= 0:
         raise InputValidationError("Parâmetros inválidos para nb_agents.")
     try:
-        max_iterate: int = 65535
-        for count in range(1, max_iterate + 1):
-            if asa(float(count), calls_per_interval, avg_ht) <= avg_sa:
-                return count
-        raise CalculationError("Não foi possível determinar o número de agentes com nb_agents.")
+        birth_rate: float = calls_per_interval
+        death_rate: float = INTERVAL / avg_ht
+        traffic_rate: float = birth_rate / death_rate
+        lo: int = max(1, int(math.ceil(traffic_rate)) + 1)
+        hi: int = lo
+        while asa(float(hi), calls_per_interval, avg_ht) > avg_sa:
+            hi *= 2
+            if hi > 65535:
+                raise CalculationError("Não foi possível determinar o número de agentes com nb_agents.")
+        while lo < hi:
+            mid: int = (lo + hi) // 2
+            if asa(float(mid), calls_per_interval, avg_ht) <= avg_sa:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
     except Exception as e:
         raise CalculationError(f"Erro em nb_agents: {str(e)}") from e
 
@@ -196,6 +212,8 @@ def fractional_agents(sla: float, service_time: int, calls_per_interval: float, 
         service_time (int): Tempo alvo de atendimento (em segundos).
         calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
         aht (int): Duração média da chamada (em segundos).
+        patience (float, optional): Paciência média do cliente em segundos (Erlang A).
+            Se None, usa Erlang C puro.
 
     Returns:
         float: Número fracionário de agentes.
@@ -211,34 +229,32 @@ def fractional_agents(sla: float, service_time: int, calls_per_interval: float, 
         birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
-        erlangs: int = int((birth_rate * aht) / INTERVAL + 0.5)
-        no_agents: int = 1 if erlangs < 1 else int(erlangs)
-        utilisation: float = traffic_rate / no_agents
-        while utilisation >= 1:
-            no_agents += 1
-            utilisation = traffic_rate / no_agents
-        sl_queued: float = 0.0
-        max_iterate: int = no_agents * 100
-        last_slq: float = 0.0
-        for _ in range(max_iterate):
-            last_slq = sl_queued
-            utilisation = traffic_rate / no_agents
-            if utilisation < 1:
-                if patience is not None:
-                    ea: dict = erlang_a(no_agents, traffic_rate, patience, aht)
-                    sl_queued = ea['sla'](service_time)
-                else:
-                    c: float = erlang_c(no_agents, traffic_rate)
-                    sl_queued = 1 - c * math.exp((traffic_rate - no_agents) * service_time / aht)
-                if sl_queued < 0:
-                    sl_queued = 0.0
-                if sl_queued > 1:
-                    sl_queued = 1.0
-                if sl_queued >= sla or sl_queued > (1 - MAX_ACCURACY):
-                    break
-            no_agents += 1
+
+        def _sla_at(n: int) -> float:
+            if traffic_rate / n >= 1:
+                return 0.0
+            if patience is not None:
+                ea: dict = erlang_a(n, traffic_rate, patience, aht)
+                return min_max(ea['sla'](service_time), 0.0, 1.0)
+            c: float = erlang_c(n, traffic_rate)
+            val: float = 1 - c * math.exp((traffic_rate - n) * service_time / aht)
+            return min_max(val, 0.0, 1.0)
+
+        lo: int = max(1, int(math.ceil(traffic_rate)) + 1)
+        hi: int = lo
+        while _sla_at(hi) < sla:
+            hi *= 2
+        while lo < hi:
+            mid: int = (lo + hi) // 2
+            if _sla_at(mid) >= sla:
+                hi = mid
+            else:
+                lo = mid + 1
+        no_agents: int = lo
+        sl_queued: float = _sla_at(no_agents)
+        last_slq: float = _sla_at(no_agents - 1) if no_agents > 1 else 0.0
         no_agents_sng: float = float(no_agents)
-        if sl_queued > sla:
+        if sl_queued > sla and (sl_queued - last_slq) > 0:
             one_agent_effect: float = sl_queued - last_slq
             fract: float = sla - last_slq
             no_agents_sng = (fract / one_agent_effect) + (no_agents - 1)

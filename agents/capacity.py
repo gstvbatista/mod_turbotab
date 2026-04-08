@@ -3,20 +3,22 @@ Módulo para cálculos relacionados a agentes e métricas de atendimento.
 """
 
 import math
-from mod_turbotab.calculations.erlang import erlang_c
+from mod_turbotab.calculations.erlang import erlang_c, erlang_a
 from mod_turbotab.utils import secs, int_ceiling, min_max
 from mod_turbotab.calculations.traffic import traffic
 from mod_turbotab.exceptions import CalculationError, InputValidationError
 from mod_turbotab.config import INTERVAL, MAX_ACCURACY
 
-def agents_required(sla: float, service_time: int, calls_per_interval: float, aht: int) -> int:
+def agents_required(sla: float, service_time: int, calls_per_interval: float, aht: int, patience: float = None) -> int:
     """Determina o número de agentes necessários para atingir o SLA desejado.
 
     Args:
         sla (float): Percentual de atendimento esperado (ex: 0.95 para 95%).
         service_time (int): Tempo alvo de atendimento em segundos.
-        calls_per_interval (float): Número de chamadas por hora.
+        calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
         aht (int): Duração média da chamada (em segundos).
+        patience (float, optional): Paciência média do cliente em segundos (Erlang A).
+            Se None, usa Erlang C puro.
 
     Returns:
         int: Número de agentes requeridos.
@@ -42,8 +44,12 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
         for _ in range(max_iterate):
             utilisation = traffic_rate / no_agents
             if utilisation < 1:
-                c: float = erlang_c(no_agents, traffic_rate)
-                sl_queued: float = 1 - c * math.exp((traffic_rate - no_agents) * service_time / aht)
+                if patience is not None:
+                    ea: dict = erlang_a(no_agents, traffic_rate, patience, aht)
+                    sl_queued: float = ea['sla'](service_time)
+                else:
+                    c: float = erlang_c(no_agents, traffic_rate)
+                    sl_queued = 1 - c * math.exp((traffic_rate - no_agents) * service_time / aht)
                 if sl_queued < 0:
                     sl_queued = 0.0
                 if sl_queued >= sla or sl_queued > (1 - MAX_ACCURACY):
@@ -53,13 +59,15 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
     except Exception as e:
         raise CalculationError(f"Erro em agents_required: {str(e)}") from e
 
-def asa(agents: float, calls_per_interval: float, aht: int) -> int:
+def asa(agents: float, calls_per_interval: float, aht: int, patience: float = None) -> int:
     """Calcula o Average Speed of Answer (ASA) para um dado número de agentes.
 
     Args:
         agents (float): Número de agentes.
         calls_per_interval (float): Chamadas por intervalo (conforme config.INTERVAL).
         aht (int): Duração média da chamada (em segundos).
+        patience (float, optional): Paciência média do cliente em segundos (Erlang A).
+            Se None, usa Erlang C puro.
 
     Returns:
         int: ASA em segundos.
@@ -74,6 +82,9 @@ def asa(agents: float, calls_per_interval: float, aht: int) -> int:
         birth_rate: float = calls_per_interval
         death_rate: float = INTERVAL / aht
         traffic_rate: float = birth_rate / death_rate
+        if patience is not None:
+            ea: dict = erlang_a(agents, traffic_rate, patience, aht)
+            return int(ea['asa'] + 0.5)
         utilisation: float = traffic_rate / agents
         if utilisation >= 1:
             utilisation = 0.99
@@ -177,7 +188,7 @@ def call_capacity(no_agents: float, sla: float, service_time: int, aht: int) -> 
     except Exception as e:
         raise CalculationError(f"Erro em call_capacity: {str(e)}") from e
 
-def fractional_agents(sla: float, service_time: int, calls_per_interval: float, aht: int) -> float:
+def fractional_agents(sla: float, service_time: int, calls_per_interval: float, aht: int, patience: float = None) -> float:
     """Calcula o número fracionário de agentes necessários para atingir o SLA desejado.
 
     Args:
@@ -213,8 +224,12 @@ def fractional_agents(sla: float, service_time: int, calls_per_interval: float, 
             last_slq = sl_queued
             utilisation = traffic_rate / no_agents
             if utilisation < 1:
-                c: float = erlang_c(no_agents, traffic_rate)
-                sl_queued = 1 - c * math.exp((traffic_rate - no_agents) * service_time / aht)
+                if patience is not None:
+                    ea: dict = erlang_a(no_agents, traffic_rate, patience, aht)
+                    sl_queued = ea['sla'](service_time)
+                else:
+                    c: float = erlang_c(no_agents, traffic_rate)
+                    sl_queued = 1 - c * math.exp((traffic_rate - no_agents) * service_time / aht)
                 if sl_queued < 0:
                     sl_queued = 0.0
                 if sl_queued > 1:

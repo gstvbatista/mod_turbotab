@@ -1,6 +1,6 @@
 # mod_turbotab
 
-`mod_turbotab` is a pure-Python telecom and contact-center capacity library built around Erlang-style queueing formulas.
+`mod_turbotab` is a modern Python implementation of TurboTable-style contact-center planning calculations, exposed as both a Python library and the `turbotab` CLI.
 
 It provides:
 
@@ -8,14 +8,18 @@ It provides:
 - Queueing metrics such as queued percentage, queue size, queue wait time, and achieved SLA
 - Staffing metrics such as required agents, ASA, and call capacity
 - Trunk sizing utilities for telephony capacity planning
+- A command-line interface with JSON output for agent/tool workflows
 - No third-party runtime dependencies
 
-The repository is intentionally small: it is a library package, not a CLI or web app.
+The project keeps the historical `mod_turbotab` name used by call-center planning and traffic analysts, while exposing the shorter `turbotab` command for terminal use.
 
 ## Contents
 
 - [What This Library Models](#what-this-library-models)
+- [Installation](#installation)
 - [Importing The Package](#importing-the-package)
+- [Command-Line Usage](#command-line-usage)
+- [Agent Usage](#agent-usage)
 - [Units And Core Assumptions](#units-and-core-assumptions)
 - [Mathematical Model](#mathematical-model)
 - [Worked Example](#worked-example)
@@ -43,15 +47,29 @@ In practice this is useful for:
 - inbound telephony trunk sizing
 - "what-if" capacity simulations
 
+## Installation
+
+From a local checkout, install the package in editable mode:
+
+```bash
+python3 -m pip install -e .
+```
+
+With `uv`, create/use an environment and install the checkout:
+
+```bash
+uv pip install -e .
+```
+
+The Python distribution name is `mod-turbotab`, the import package is `mod_turbotab`, and the installed CLI command is `turbotab`.
+
 ## Importing The Package
 
-This repository does not currently include `pyproject.toml`, `setup.py`, or a published package configuration. Use it as a source package by placing the parent directory on `PYTHONPATH`.
+After installation, import the Python package directly:
 
 Example:
 
 ```bash
-git clone <repo-url>
-cd /path/to/parent/of/mod_turbotab
 python3 - <<'PY'
 from mod_turbotab.agents.capacity import agents_required
 
@@ -59,12 +77,65 @@ print(agents_required(0.80, 20, 25, 180))
 PY
 ```
 
-Or:
+For source-only usage without installing, place the parent directory on `PYTHONPATH`:
 
 ```bash
 export PYTHONPATH=/path/to/parent/of/mod_turbotab_parent
 python3 your_script.py
 ```
+
+## Command-Line Usage
+
+The CLI mirrors the existing library surface and supports deterministic JSON output for agents:
+
+```bash
+turbotab --help
+turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+```
+
+Example JSON:
+
+```json
+{"calculation": "agents.required", "inputs": {"aht": 180, "calls_per_interval": 25.0, "interval": 600.0, "service_time": 20, "sla": 0.8}, "result": {"name": "agents", "unit": "agents", "value": 11}}
+```
+
+Common commands:
+
+```bash
+# Required agents for 80% SLA in 20 seconds
+turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+
+# Achieved SLA for a staffing level
+turbotab queues sla --agents 11 --service-time 20 --calls-per-interval 25 --aht 180 --json
+
+# Average queue wait time
+turbotab queues time --agents 11 --calls-per-interval 25 --aht 180 --json
+
+# Erlang B blocking probability
+turbotab erlang b --servers 10 --intensity 8 --json
+
+# Required telephony trunks
+turbotab trunks required --agents 11 --calls-per-interval 25 --aht 180 --json
+```
+
+Each final command has its own help:
+
+```bash
+turbotab agents required --help
+turbotab queues sla --help
+```
+
+Invalid inputs exit non-zero and print a concise error to stderr.
+
+## Agent Usage
+
+Agents should prefer the CLI with `--json` instead of parsing text output or importing internals:
+
+```bash
+turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+```
+
+The repo also includes a skill at `skills/mod-turbotab/SKILL.md` with command recipes and guardrails. The most important rule is the unit convention: `calls_per_interval` is not calls per hour unless `--interval 3600` is passed.
 
 ## Units And Core Assumptions
 
@@ -565,6 +636,8 @@ MAX_LOOPS = 100
 
 ```text
 mod_turbotab/
+├── pyproject.toml
+├── cli.py
 ├── agents/
 │   └── capacity.py
 ├── calculations/
@@ -577,6 +650,11 @@ mod_turbotab/
 │   └── shrinkage_absenteeism.md
 ├── queues/
 │   └── queues.py
+├── skills/
+│   └── mod-turbotab/
+│       └── SKILL.md
+├── tests/
+│   └── test_cli.py
 ├── trunks/
 │   └── trunks.py
 ├── exceptions.py
@@ -607,7 +685,6 @@ except CalculationError:
 
 These are worth knowing before you build on top of the library:
 
-- The package is not yet packaged for installation with `pip`.
 - Some zero-value edge cases are not handled cleanly. For example, `agents=0` or `servers=0` may lead to wrapped runtime errors rather than a clean validation failure.
 - `number_trunks()` uses a fixed blocking threshold of `0.001`; it is not configurable.
 - No multi-skill routing model (see `coming_soon/multi_skill_erlang_c.md`).

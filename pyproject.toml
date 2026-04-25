@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mod-turbotab"
+version = "0.1.0"
+description = "TurboTable-style contact-center planning calculations for Python and CLI workflows."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Gustavo Batista" }
+]
+keywords = [
+  "call-center",
+  "contact-center",
+  "erlang",
+  "staffing",
+  "telecom",
+  "turbotable",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Telecommunications Industry",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/gstvbatista/mod_turbotab"
+
+[project.scripts]
+turbotab = "mod_turbotab.cli:main"
+
+[tool.setuptools]
+package-dir = { "mod_turbotab" = "." }
+packages = [
+  "mod_turbotab",
+  "mod_turbotab.agents",
+  "mod_turbotab.calculations",
+  "mod_turbotab.queues",
+  "mod_turbotab.trunks",
+]

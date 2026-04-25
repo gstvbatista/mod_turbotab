@@ -172,3 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Local Codex/agent workspace instructions
+/AGENTS.md
+/.genie/

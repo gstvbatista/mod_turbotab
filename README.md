@@ -74,39 +74,58 @@ The CLI is the primary interface. It mirrors the existing calculation surface an
 
 ```bash
 turbotab --help
-turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
 ```
 
 Example JSON:
 
 ```json
-{"calculation": "agents.required", "inputs": {"aht": 180, "calls_per_interval": 25.0, "interval": 600.0, "service_time": 20, "sla": 0.8}, "result": {"name": "agents", "unit": "agents", "value": 11}, "schema_version": "1.0"}
+{"calculation": "staffing.required", "inputs": {"aht": 180, "calls_per_interval": 25.0, "interval": 600.0, "service_time": 20, "sla": 0.8}, "result": {"name": "agents", "unit": "agents", "value": 11}, "schema_version": "1.0"}
 ```
 
 Common commands:
 
 ```bash
 # Required agents for 80% SLA in 20 seconds
-turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
 
 # Achieved SLA for a staffing level
-turbotab queues sla --agents 11 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab sla achieved --agents 11 --service-time 20 --calls-per-interval 25 --aht 180 --json
 
 # Average queue wait time
-turbotab queues time --agents 11 --calls-per-interval 25 --aht 180 --json
+turbotab queue wait --agents 11 --calls-per-interval 25 --aht 180 --json
 
 # Erlang B blocking probability
 turbotab erlang b --servers 10 --intensity 8 --json
 
 # Required telephony trunks
-turbotab trunks required --agents 11 --calls-per-interval 25 --aht 180 --json
+turbotab telecom trunks --agents 11 --calls-per-interval 25 --aht 180 --json
+```
+
+The preferred agent-facing taxonomy is intent-first:
+
+```text
+turbotab staffing ...
+turbotab sla ...
+turbotab queue ...
+turbotab telecom ...
+```
+
+Detailed formula/module groups are still available for lower-level use:
+
+```text
+turbotab agents ...
+turbotab queues ...
+turbotab erlang ...
+turbotab traffic ...
+turbotab trunks ...
 ```
 
 Each final command has its own help:
 
 ```bash
-turbotab agents required --help
-turbotab queues sla --help
+turbotab staffing required --help
+turbotab sla achieved --help
 ```
 
 Invalid inputs exit non-zero and print a concise error to stderr.
@@ -116,7 +135,7 @@ Invalid inputs exit non-zero and print a concise error to stderr.
 Agents should prefer the CLI with `--json` instead of parsing text output or importing internals:
 
 ```bash
-turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
 ```
 
 JSON output is intended as the stable agent contract:
@@ -124,7 +143,7 @@ JSON output is intended as the stable agent contract:
 ```json
 {
   "schema_version": "1.0",
-  "calculation": "agents.required",
+  "calculation": "staffing.required",
   "inputs": {
     "aht": 180,
     "calls_per_interval": 25.0,

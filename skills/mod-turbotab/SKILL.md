@@ -13,7 +13,7 @@ Use the `turbotab` CLI with `--json` as the primary interface.
 
 ```bash
 turbotab --help
-turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
 ```
 
 If the package is not installed, install it from the repo checkout with `uv`:
@@ -45,31 +45,31 @@ When the user gives an arrival volume without a time bucket, ask whether it is p
 Required agents:
 
 ```bash
-turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
 ```
 
 Achieved SLA:
 
 ```bash
-turbotab queues sla --agents 11 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab sla achieved --agents 11 --service-time 20 --calls-per-interval 25 --aht 180 --json
 ```
 
 Average queue wait:
 
 ```bash
-turbotab queues time --agents 11 --calls-per-interval 25 --aht 180 --json
+turbotab queue wait --agents 11 --calls-per-interval 25 --aht 180 --json
 ```
 
 Call capacity for a fixed staffing level:
 
 ```bash
-turbotab agents capacity --no-agents 11 --sla 0.80 --service-time 20 --aht 180 --json
+turbotab staffing capacity --agents 11 --sla 0.80 --service-time 20 --aht 180 --json
 ```
 
 Trunks required:
 
 ```bash
-turbotab trunks required --agents 11 --calls-per-interval 25 --aht 180 --json
+turbotab telecom trunks --agents 11 --calls-per-interval 25 --aht 180 --json
 ```
 
 Erlang B:

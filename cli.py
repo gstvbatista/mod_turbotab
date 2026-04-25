@@ -73,6 +73,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     categories = parser.add_subparsers(dest="category", metavar="category")
+    _add_staffing_commands(categories)
+    _add_sla_commands(categories)
+    _add_queue_commands(categories)
+    _add_telecom_commands(categories)
     _add_agents_commands(categories)
     _add_queues_commands(categories)
     _add_erlang_commands(categories)
@@ -81,8 +85,148 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    parser = categories.add_parser("staffing", help="Intent-first staffing calculations for agents.")
+    commands = parser.add_subparsers(dest="staffing_command", metavar="command")
+
+    required = commands.add_parser("required", help="Calculate agents required for a target SLA.")
+    _add_output_arg(required)
+    _add_sla_arg(required)
+    _add_service_time_arg(required)
+    _add_calls_arg(required)
+    _add_aht_arg(required)
+    _add_interval_arg(required)
+    _add_patience_arg(required)
+    _set_handler(required, "staffing.required", "agents", "agents", agents_required)
+
+    asa_parser = commands.add_parser("asa", help="Calculate average speed of answer in seconds.")
+    _add_output_arg(asa_parser)
+    _add_agents_arg(asa_parser)
+    _add_calls_arg(asa_parser)
+    _add_aht_arg(asa_parser)
+    _add_interval_arg(asa_parser)
+    _add_patience_arg(asa_parser)
+    _set_handler(asa_parser, "staffing.asa", "seconds", "asa", asa)
+
+    capacity = commands.add_parser("capacity", help="Calculate maximum calls for a staffed SLA target.")
+    _add_output_arg(capacity)
+    capacity.add_argument("--agents", dest="no_agents", type=float, required=True, help="Available agents.")
+    _add_sla_arg(capacity)
+    _add_service_time_arg(capacity)
+    _add_aht_arg(capacity)
+    _add_interval_arg(capacity)
+    _set_handler(capacity, "staffing.capacity", "calls_per_interval", "call_capacity", call_capacity)
+
+    fractional_required = commands.add_parser(
+        "fractional-required",
+        help="Calculate fractional agents required for a target SLA.",
+    )
+    _add_output_arg(fractional_required)
+    _add_sla_arg(fractional_required)
+    _add_service_time_arg(fractional_required)
+    _add_calls_arg(fractional_required)
+    _add_aht_arg(fractional_required)
+    _add_interval_arg(fractional_required)
+    _add_patience_arg(fractional_required)
+    _set_handler(
+        fractional_required,
+        "staffing.fractional_required",
+        "agents",
+        "fractional_agents",
+        fractional_agents,
+    )
+
+    fractional_capacity = commands.add_parser(
+        "fractional-capacity",
+        help="Calculate maximum calls for a fractional staffed SLA target.",
+    )
+    _add_output_arg(fractional_capacity)
+    fractional_capacity.add_argument("--agents", dest="no_agents", type=float, required=True, help="Available fractional agents.")
+    _add_sla_arg(fractional_capacity)
+    _add_service_time_arg(fractional_capacity)
+    _add_aht_arg(fractional_capacity)
+    _add_interval_arg(fractional_capacity)
+    _set_handler(
+        fractional_capacity,
+        "staffing.fractional_capacity",
+        "calls_per_interval",
+        "fractional_call_capacity",
+        fractional_call_capacity,
+    )
+
+
+def _add_sla_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    parser = categories.add_parser("sla", help="Intent-first service level calculations.")
+    commands = parser.add_subparsers(dest="sla_command", metavar="command")
+
+    achieved = commands.add_parser("achieved", help="Calculate achieved SLA for staffing and target answer time.")
+    _add_output_arg(achieved)
+    _add_agents_arg(achieved)
+    achieved.add_argument("--service-time", dest="service_time_val", type=float, required=True, help="Target answer time in seconds.")
+    _add_calls_arg(achieved)
+    _add_aht_arg(achieved)
+    _add_interval_arg(achieved)
+    _add_patience_arg(achieved)
+    _set_handler(achieved, "sla.achieved", "ratio", "sla_metric", sla_metric)
+
+    target_time = commands.add_parser("target-time", help="Calculate answer time needed for a target SLA.")
+    _add_output_arg(target_time)
+    _add_agents_arg(target_time)
+    _add_sla_arg(target_time)
+    _add_calls_arg(target_time)
+    _add_aht_arg(target_time)
+    _add_interval_arg(target_time)
+    _add_patience_arg(target_time)
+    _set_handler(target_time, "sla.target_time", "seconds", "service_time", service_time)
+
+
+def _add_queue_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    parser = categories.add_parser("queue", help="Intent-first queue wait, size, and probability calculations.")
+    commands = parser.add_subparsers(dest="queue_command", metavar="command")
+
+    wait_parser = commands.add_parser("wait", help="Calculate average queue wait time in seconds.")
+    _add_output_arg(wait_parser)
+    _add_agents_arg(wait_parser)
+    _add_calls_arg(wait_parser)
+    _add_aht_arg(wait_parser)
+    _add_interval_arg(wait_parser)
+    _add_patience_arg(wait_parser)
+    _set_handler(wait_parser, "queue.wait", "seconds", "queue_time", queue_time)
+
+    size_parser = commands.add_parser("size", help="Calculate average queue size in calls.")
+    _add_output_arg(size_parser)
+    _add_agents_arg(size_parser)
+    _add_calls_arg(size_parser)
+    _add_aht_arg(size_parser)
+    _add_interval_arg(size_parser)
+    _add_patience_arg(size_parser)
+    _set_handler(size_parser, "queue.size", "calls", "queue_size", queue_size)
+
+    probability_parser = commands.add_parser("probability", help="Calculate probability that calls queue.")
+    _add_output_arg(probability_parser)
+    _add_agents_arg(probability_parser)
+    _add_calls_arg(probability_parser)
+    _add_aht_arg(probability_parser)
+    _add_interval_arg(probability_parser)
+    _add_patience_arg(probability_parser)
+    _set_handler(probability_parser, "queue.probability", "ratio", "queued", queued)
+
+
+def _add_telecom_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    parser = categories.add_parser("telecom", help="Intent-first telephony trunk sizing calculations.")
+    commands = parser.add_subparsers(dest="telecom_command", metavar="command")
+
+    trunks_parser = commands.add_parser("trunks", help="Calculate trunks required for call volume.")
+    _add_output_arg(trunks_parser)
+    _add_agents_arg(trunks_parser)
+    _add_calls_arg(trunks_parser)
+    _add_aht_arg(trunks_parser)
+    _add_interval_arg(trunks_parser)
+    _set_handler(trunks_parser, "telecom.trunks", "trunks", "trunks_required", trunks_required)
+
+
 def _add_agents_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = categories.add_parser("agents", help="Staffing and agent capacity calculations.")
+    parser = categories.add_parser("agents", help="Detailed agent capacity calculations.")
     commands = parser.add_subparsers(dest="agents_command", metavar="command")
 
     required = commands.add_parser("required", help="Calculate agents required for a target SLA.")
@@ -168,7 +312,7 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
 
 
 def _add_queues_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = categories.add_parser("queues", help="Queue wait, size, and SLA metrics.")
+    parser = categories.add_parser("queues", help="Detailed queue wait, size, and SLA metrics.")
     commands = parser.add_subparsers(dest="queues_command", metavar="command")
 
     queued_parser = commands.add_parser("queued", help="Calculate percentage of calls that queue.")
@@ -402,6 +546,10 @@ def _function_inputs(args: argparse.Namespace, exclude: set[str] | None = None) 
         "json",
         "category",
         "calculation",
+        "staffing_command",
+        "sla_command",
+        "queue_command",
+        "telecom_command",
         "agents_command",
         "queues_command",
         "erlang_command",

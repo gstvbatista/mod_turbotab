@@ -52,6 +52,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
+        self.assertEqual(payload["schema_version"], "1.0")
         self.assertEqual(payload["calculation"], "agents.required")
         self.assertEqual(payload["result"]["name"], "agents")
         self.assertEqual(payload["result"]["unit"], "agents")
@@ -75,7 +76,29 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
         self.assertEqual(payload["calculation"], "queues.sla")
+        self.assertIn("service_time", payload["inputs"])
+        self.assertNotIn("service_time_val", payload["inputs"])
         self.assertGreaterEqual(payload["result"]["value"], 0.80)
+
+    def test_capacity_json_uses_cli_terms(self) -> None:
+        result = run_cli(
+            "agents",
+            "capacity",
+            "--no-agents",
+            "11",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--aht",
+            "180",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertIn("agents", payload["inputs"])
+        self.assertNotIn("no_agents", payload["inputs"])
 
     def test_invalid_input_exits_nonzero(self) -> None:
         result = run_cli(

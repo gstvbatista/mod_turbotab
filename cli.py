@@ -360,11 +360,11 @@ def _handle_function(
     result_name: str,
     func: Callable[..., Any],
 ) -> dict[str, Any]:
-    inputs = _public_inputs(args)
-    result = func(**inputs)
+    result = func(**_function_inputs(args))
     return {
+        "schema_version": "1.0",
         "calculation": calculation,
-        "inputs": inputs,
+        "inputs": _public_inputs(args),
         "result": {
             "name": result_name,
             "value": result,
@@ -374,10 +374,10 @@ def _handle_function(
 
 
 def _handle_erlang_a(args: argparse.Namespace) -> dict[str, Any]:
-    inputs = _public_inputs(args, exclude={"target_time"})
+    inputs = _function_inputs(args, exclude={"target_time"})
     metrics = erlang_a(**inputs)
     result: dict[str, Any] = {
-        "pw": metrics["pw"],
+        "probability_waiting": metrics["pw"],
         "asa": metrics["asa"],
         "abandon_rate": metrics["abandon_rate"],
     }
@@ -385,6 +385,7 @@ def _handle_erlang_a(args: argparse.Namespace) -> dict[str, Any]:
         result["sla"] = metrics["sla"](args.target_time)
         result["target_time"] = args.target_time
     return {
+        "schema_version": "1.0",
         "calculation": "erlang.a",
         "inputs": _public_inputs(args),
         "result": {
@@ -395,7 +396,7 @@ def _handle_erlang_a(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
-def _public_inputs(args: argparse.Namespace, exclude: set[str] | None = None) -> dict[str, Any]:
+def _function_inputs(args: argparse.Namespace, exclude: set[str] | None = None) -> dict[str, Any]:
     excluded = {
         "handler",
         "json",
@@ -413,6 +414,18 @@ def _public_inputs(args: argparse.Namespace, exclude: set[str] | None = None) ->
         key: value
         for key, value in vars(args).items()
         if key not in excluded and value is not None
+    }
+
+
+def _public_inputs(args: argparse.Namespace, exclude: set[str] | None = None) -> dict[str, Any]:
+    aliases = {
+        "no_agents": "agents",
+        "service_time_val": "service_time",
+    }
+    inputs = _function_inputs(args, exclude=exclude)
+    return {
+        aliases.get(key, key): value
+        for key, value in inputs.items()
     }
 
 

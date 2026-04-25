@@ -1,6 +1,6 @@
 # mod_turbotab
 
-`mod_turbotab` is a modern Python implementation of TurboTable-style contact-center planning calculations, exposed as both a Python library and the `turbotab` CLI.
+`mod_turbotab` is a CLI-first Python implementation of TurboTable-style contact-center planning calculations for agents, automation, and analysts.
 
 It provides:
 
@@ -8,10 +8,11 @@ It provides:
 - Queueing metrics such as queued percentage, queue size, queue wait time, and achieved SLA
 - Staffing metrics such as required agents, ASA, and call capacity
 - Trunk sizing utilities for telephony capacity planning
-- A command-line interface with JSON output for agent/tool workflows
+- The `turbotab` command-line interface with JSON output for agent/tool workflows
+- A Python library API for users who need direct imports
 - No third-party runtime dependencies
 
-The project keeps the historical `mod_turbotab` name used by call-center planning and traffic analysts, while exposing the shorter `turbotab` command for terminal use.
+The project keeps the historical `mod_turbotab` name used by call-center planning and traffic analysts, while making `turbotab` the primary interface for terminal and agent use.
 
 ## Contents
 
@@ -49,44 +50,27 @@ In practice this is useful for:
 
 ## Installation
 
-From a local checkout, install the package in editable mode:
-
-```bash
-python3 -m pip install -e .
-```
-
 With `uv`, create/use an environment and install the checkout:
 
 ```bash
+uv venv
+source .venv/bin/activate
 uv pip install -e .
+```
+
+Fallback with standard Python packaging tools:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -e .
 ```
 
 The Python distribution name is `mod-turbotab`, the import package is `mod_turbotab`, and the installed CLI command is `turbotab`.
 
-## Importing The Package
-
-After installation, import the Python package directly:
-
-Example:
-
-```bash
-python3 - <<'PY'
-from mod_turbotab.agents.capacity import agents_required
-
-print(agents_required(0.80, 20, 25, 180))
-PY
-```
-
-For source-only usage without installing, place the parent directory on `PYTHONPATH`:
-
-```bash
-export PYTHONPATH=/path/to/parent/of/mod_turbotab_parent
-python3 your_script.py
-```
-
 ## Command-Line Usage
 
-The CLI mirrors the existing library surface and supports deterministic JSON output for agents:
+The CLI is the primary interface. It mirrors the existing calculation surface and supports deterministic JSON output for agents:
 
 ```bash
 turbotab --help
@@ -96,7 +80,7 @@ turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --
 Example JSON:
 
 ```json
-{"calculation": "agents.required", "inputs": {"aht": 180, "calls_per_interval": 25.0, "interval": 600.0, "service_time": 20, "sla": 0.8}, "result": {"name": "agents", "unit": "agents", "value": 11}}
+{"calculation": "agents.required", "inputs": {"aht": 180, "calls_per_interval": 25.0, "interval": 600.0, "service_time": 20, "sla": 0.8}, "result": {"name": "agents", "unit": "agents", "value": 11}, "schema_version": "1.0"}
 ```
 
 Common commands:
@@ -135,7 +119,47 @@ Agents should prefer the CLI with `--json` instead of parsing text output or imp
 turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
 ```
 
+JSON output is intended as the stable agent contract:
+
+```json
+{
+  "schema_version": "1.0",
+  "calculation": "agents.required",
+  "inputs": {
+    "aht": 180,
+    "calls_per_interval": 25.0,
+    "interval": 600.0,
+    "service_time": 20,
+    "sla": 0.8
+  },
+  "result": {
+    "name": "agents",
+    "unit": "agents",
+    "value": 11
+  }
+}
+```
+
 The repo also includes a skill at `skills/mod-turbotab/SKILL.md` with command recipes and guardrails. The most important rule is the unit convention: `calls_per_interval` is not calls per hour unless `--interval 3600` is passed.
+
+## Importing The Package
+
+After installation, import the Python package directly when a Python API is more appropriate than shelling out to the CLI:
+
+```bash
+python3 - <<'PY'
+from mod_turbotab.agents.capacity import agents_required
+
+print(agents_required(0.80, 20, 25, 180))
+PY
+```
+
+For source-only usage without installing, place the parent directory on `PYTHONPATH`:
+
+```bash
+export PYTHONPATH=/path/to/parent/of/mod_turbotab_parent
+python3 your_script.py
+```
 
 ## Units And Core Assumptions
 

@@ -9,16 +9,18 @@ Use this skill when a user asks for contact-center planning, traffic analyst, Er
 
 ## Tool
 
-Prefer the `turbotab` CLI with `--json`.
+Use the `turbotab` CLI with `--json` as the primary interface.
 
 ```bash
 turbotab --help
 turbotab agents required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
 ```
 
-If the package is not installed, install it from the repo checkout:
+If the package is not installed, install it from the repo checkout with `uv`:
 
 ```bash
+uv venv
+source .venv/bin/activate
 uv pip install -e .
 ```
 
@@ -86,6 +88,7 @@ turbotab erlang a --servers 10 --intensity 8 --patience 60 --aht 180 --target-ti
 
 Parse the JSON object and report:
 
+- `schema_version`: output contract version.
 - `calculation`: command family and metric.
 - `inputs`: normalized input values used by the calculation.
 - `result.name`: metric name.
@@ -93,6 +96,7 @@ Parse the JSON object and report:
 - `result.unit`: result unit or ratio.
 
 Do not scrape human text output when `--json` is available.
+Do not import Python internals when the CLI can answer the user request.
 
 ## Guardrails
 

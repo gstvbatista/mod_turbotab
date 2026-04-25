@@ -2,9 +2,7 @@
 Módulo para cálculos relacionados à intensidade de tráfego.
 """
 
-import math
 from mod_turbotab.calculations.erlang import erlang_b
-from mod_turbotab.utils import int_ceiling
 
 MAX_ACCURACY: float = 0.00001
 MAX_LOOPS: int = 100

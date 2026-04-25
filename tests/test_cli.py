@@ -28,6 +28,15 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 class CliTests(unittest.TestCase):
+    def test_group_without_command_prints_group_help(self) -> None:
+        result = run_cli("sla")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("usage: turbotab sla", result.stdout)
+        self.assertIn("achieved", result.stdout)
+        self.assertIn("target-time", result.stdout)
+        self.assertNotIn("staffing  Intent-first staffing", result.stdout)
+
     def test_subcommand_help(self) -> None:
         result = run_cli("agents", "required", "--help")
 

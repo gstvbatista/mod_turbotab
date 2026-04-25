@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if not hasattr(args, "handler"):
-        parser.print_help()
+        args.help_parser.print_help()
         return 0
 
     try:
@@ -71,6 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.set_defaults(help_parser=parser)
 
     categories = parser.add_subparsers(dest="category", metavar="category")
     _add_staffing_commands(categories)
@@ -87,6 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("staffing", help="Intent-first staffing calculations for agents.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="staffing_command", metavar="command")
 
     required = commands.add_parser("required", help="Calculate agents required for a target SLA.")
@@ -157,6 +159,7 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
 
 def _add_sla_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("sla", help="Intent-first service level calculations.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="sla_command", metavar="command")
 
     achieved = commands.add_parser("achieved", help="Calculate achieved SLA for staffing and target answer time.")
@@ -182,6 +185,7 @@ def _add_sla_commands(categories: argparse._SubParsersAction[argparse.ArgumentPa
 
 def _add_queue_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("queue", help="Intent-first queue wait, size, and probability calculations.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="queue_command", metavar="command")
 
     wait_parser = commands.add_parser("wait", help="Calculate average queue wait time in seconds.")
@@ -214,6 +218,7 @@ def _add_queue_commands(categories: argparse._SubParsersAction[argparse.Argument
 
 def _add_telecom_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("telecom", help="Intent-first telephony trunk sizing calculations.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="telecom_command", metavar="command")
 
     trunks_parser = commands.add_parser("trunks", help="Calculate trunks required for call volume.")
@@ -227,6 +232,7 @@ def _add_telecom_commands(categories: argparse._SubParsersAction[argparse.Argume
 
 def _add_agents_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("agents", help="Detailed agent capacity calculations.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="agents_command", metavar="command")
 
     required = commands.add_parser("required", help="Calculate agents required for a target SLA.")
@@ -313,6 +319,7 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
 
 def _add_queues_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("queues", help="Detailed queue wait, size, and SLA metrics.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="queues_command", metavar="command")
 
     queued_parser = commands.add_parser("queued", help="Calculate percentage of calls that queue.")
@@ -365,6 +372,7 @@ def _add_queues_commands(categories: argparse._SubParsersAction[argparse.Argumen
 
 def _add_erlang_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("erlang", help="Erlang B, C, A, and Engset calculations.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="erlang_command", metavar="command")
 
     b_parser = commands.add_parser("b", help="Calculate Erlang B blocking probability.")
@@ -405,6 +413,7 @@ def _add_erlang_commands(categories: argparse._SubParsersAction[argparse.Argumen
 
 def _add_traffic_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("traffic", help="Traffic intensity inversion helpers.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="traffic_command", metavar="command")
 
     intensity_parser = commands.add_parser("intensity", help="Calculate traffic intensity for servers and blocking.")
@@ -416,6 +425,7 @@ def _add_traffic_commands(categories: argparse._SubParsersAction[argparse.Argume
 
 def _add_trunks_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = categories.add_parser("trunks", help="Telephony trunk sizing calculations.")
+    parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="trunks_command", metavar="command")
 
     required_parser = commands.add_parser("required", help="Calculate trunks required for call volume.")
@@ -543,6 +553,7 @@ def _handle_erlang_a(args: argparse.Namespace) -> dict[str, Any]:
 def _function_inputs(args: argparse.Namespace, exclude: set[str] | None = None) -> dict[str, Any]:
     excluded = {
         "handler",
+        "help_parser",
         "json",
         "category",
         "calculation",

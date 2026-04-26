@@ -370,37 +370,8 @@ except CalculationError:
 
 </details>
 
-## Project Layout
-
-```text
-mod_turbotab/
-├── cli.py
-├── pyproject.toml
-├── agents/
-├── calculations/
-├── queues/
-├── trunks/
-├── skills/
-├── tests/
-├── exceptions.py
-└── utils.py
-```
-
 ## Limitations
 
 - `number_trunks()` uses a fixed blocking threshold of `0.001`.
 - Some zero-value edge cases still return wrapped calculation errors instead of purpose-built validation messages.
 - Shrinkage, absenteeism, occupancy caps, and intraday simulation are tracked as future work in [`coming_soon/`](coming_soon/).
-
-## Development
-
-```bash
-uv venv
-source .venv/bin/activate
-uv pip install -e .
-.venv/bin/python -m unittest discover -s tests
-```
-
-## License
-
-MIT. See [`LICENSE`](LICENSE).

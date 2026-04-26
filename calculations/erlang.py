@@ -3,7 +3,7 @@ Módulo que contém funções relacionadas às fórmulas de Erlang.
 """
 
 import math
-from mod_turbotab.utils import min_max, int_ceiling
+from mod_turbotab.utils import min_max
 
 def erlang_b(servers: float, intensity: float) -> float:
     """Calcula a probabilidade de bloqueio com a fórmula de Erlang B.

@@ -5,7 +5,6 @@ Módulo para cálculos relacionados a agentes e métricas de atendimento.
 import math
 from mod_turbotab.calculations.erlang import erlang_c, erlang_a
 from mod_turbotab.utils import secs, int_ceiling, min_max
-from mod_turbotab.calculations.traffic import traffic
 from mod_turbotab.exceptions import CalculationError, InputValidationError
 def agents_required(sla: float, service_time: int, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
     """Determina o número de agentes necessários para atingir o SLA desejado.

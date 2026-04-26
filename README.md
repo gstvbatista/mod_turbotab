@@ -26,34 +26,6 @@ turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 
 
 It provides Erlang B, extended Erlang B, Engset B, Erlang C, Erlang A, queue metrics, staffing metrics, call capacity, and telephony trunk sizing with no third-party runtime dependencies.
 
-## Install
-
-Recommended local install with `uv`:
-
-```bash
-uv venv
-source .venv/bin/activate
-uv pip install -e .
-turbotab --version
-```
-
-Fallback with standard Python tooling:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -e .
-```
-
-Names:
-
-| Surface | Name |
-|---|---|
-| Python distribution | `mod-turbotab` |
-| Python import | `mod_turbotab` |
-| CLI command | `turbotab` |
-| Agent skill | `skills/mod-turbotab/SKILL.md` |
-
 ## Quick Start
 
 Required staffing for 80% SLA in 20 seconds:

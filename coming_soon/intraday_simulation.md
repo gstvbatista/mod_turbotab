@@ -1,5 +1,12 @@
 # Intraday Simulation
 
+> **Shipped.** Implementation lives in
+> [`simulation/intraday.py`](../simulation/intraday.py) with `simulate_day()`
+> plus the default curves `CURVE_WEEKDAY_VOZ`, `CURVE_SATURDAY`,
+> `CURVE_SUNDAY`, and `CURVE_FLAT`. Optional `max_occupancy` and `shrinkage`
+> integrate with `agents.capacity` and `agents.shrinkage`. The draft
+> `simulate_day_with_shifts` and `simulate_month` helpers remain follow-ups.
+
 ## Problem
 
 The current library calculates metrics for a single interval at a time. Real WFM planning requires running the calculation across every interval of the day (typically 15 or 30-minute buckets), applying arrival curves, and producing a full-day staffing plan — exactly what the "MODELO MENSAL" Excel spreadsheet does with its day-by-day tabs.

@@ -1,5 +1,10 @@
 # Occupancy Cap (Maximum Utilization)
 
+> **Shipped in v0.2 (planned)** — implemented in [`agents/capacity.py`](../agents/capacity.py)
+> via the `max_occupancy` parameter on `agents_required(...)` and the helpers
+> `occupancy(...)` / `is_within_occupancy(...)`. Default behaviour is unchanged when
+> `max_occupancy` is omitted.
+
 ## Problem
 
 Erlang C assumes agents can sustain up to ~99% occupancy. In practice, sustained occupancy above 85% leads to agent burnout, quality degradation, increased turnover, and higher absenteeism. Operations teams manually pad headcount to keep occupancy in a healthy range, but this adjustment is done outside the model.

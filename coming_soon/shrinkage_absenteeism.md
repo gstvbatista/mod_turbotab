@@ -1,5 +1,11 @@
 # Shrinkage & Absenteeism Factor
 
+> **Shipped in v0.1**: implemented as Option A (post-calculation adjustment) in
+> [`agents/shrinkage.py`](../agents/shrinkage.py). Public helpers:
+> `agents_required_with_shrinkage`, `shrinkage_factor`, `scheduled_agents`.
+> Defaults preserve current behavior (`shrinkage=0.0`); invalid factors raise
+> `mod_turbotab.exceptions.InputValidationError`.
+
 ## Problem
 
 Erlang C calculates the number of agents needed **on the phones**. But not every scheduled agent is actually available — breaks, training, meetings, absenteeism, system downtime all reduce effective headcount. Operations teams always apply a shrinkage factor manually (typically 25-35%).

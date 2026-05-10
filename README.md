@@ -297,8 +297,10 @@ The CLI is the primary interface, but the Python API remains available.
 |---|---|
 | `calculations.erlang` | `erlang_b`, `erlang_b_ext`, `engset_b`, `erlang_c`, `erlang_a` |
 | `calculations.traffic` | `traffic`, `looping_traffic` |
-| `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity` |
+| `calculations.multi_skill` | `agents_required_multi` |
+| `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity`, `occupancy`, `is_within_occupancy` |
 | `queues.queues` | `queued`, `queue_size`, `queue_time`, `service_time`, `sla_metric` |
+| `simulation.intraday` | `simulate_day`, `CURVE_WEEKDAY_VOZ`, `CURVE_SATURDAY`, `CURVE_SUNDAY`, `CURVE_FLAT` |
 | `trunks.trunks` | `number_trunks`, `trunks_required` |
 | `utils` | `min_max`, `int_ceiling`, `secs` |
 
@@ -342,8 +344,83 @@ except CalculationError:
 
 </details>
 
+## Multi-skill Erlang C
+
+Contact centers often share agents across skill groups (e.g., billing + tech support). The new `calculations.multi_skill.agents_required_multi` ships **Option A** from [`coming_soon/multi_skill_erlang_c.md`](coming_soon/multi_skill_erlang_c.md): skill partitioning + a sharing factor that captures the pooling efficiency of cross-skilled pools. Pure Python, no new dependencies. Options B (simulation) and C (ECCS) remain `TODO` and are documented in the module docstring.
+
+```python
+from mod_turbotab.calculations.multi_skill import agents_required_multi
+
+skill_groups = [
+    {"name": "billing", "calls_per_interval": 25, "aht": 180, "priority": 1},
+    {"name": "tech",    "calls_per_interval": 20, "aht": 240, "priority": 2},
+]
+agent_pools = [
+    {"skills": ["billing"],         "count": 8},
+    {"skills": ["tech"],            "count": 9},
+    {"skills": ["billing", "tech"], "count": 6},  # cross-skilled
+]
+
+result = agents_required_multi(
+    skill_groups=skill_groups,
+    agent_pools=agent_pools,
+    sla=0.80,
+    service_time=20,
+)
+
+# result["per_skill"]  -> [{"name": "billing", "baseline_hc": 11, "adjusted_hc": 10, "cross_skilled": True, ...}, ...]
+# result["totals"]     -> {"naive_total_hc": 22, "adjusted_total_hc": 20, "savings_hc": 2, "fits_in_pool_capacity": True, ...}
+```
+
+`sharing_factor` (default `0.9`) multiplies the baseline Erlang C headcount for every skill that appears in at least one multi-skill pool; a floor of `ceil(offered) + 1` keeps per-skill utilization below 100%. Skills served only by dedicated pools fall through untouched, reproducing the single-skill `agents_required` result.
+
+## Occupancy cap
+
+Erlang C alone can recommend staffing levels that drive sustained occupancy above 90%, which is associated with burnout and attrition. `agents_required` accepts an optional `max_occupancy` ceiling that lifts the headcount whenever the Erlang result would breach it; defaults are unchanged when the parameter is omitted.
+
+```python
+from mod_turbotab.agents.capacity import (
+    agents_required,
+    occupancy,
+    is_within_occupancy,
+)
+
+agents_required(0.80, 20, 25, 180)                          # 11 (no cap)
+agents_required(0.80, 20, 25, 180, max_occupancy=0.85)      # 11 (already under 85%)
+agents_required(0.80, 20, 100, 180, max_occupancy=0.85)     # 36 (lifted from Erlang result to keep A/N <= 0.85)
+
+occupancy(11, 25, 180)                                      # 0.6818  (A/N)
+is_within_occupancy(33, 100, 180, 0.85)                     # False
+is_within_occupancy(36, 100, 180, 0.85)                     # True
+```
+
+The cap is `max(erlang_c, ceil(A / max_occupancy))` where `A = calls_per_interval * aht / interval`.
+
+## Intraday simulation
+
+`simulation.intraday.simulate_day` distributes a daily volume across an arrival curve and sizes every interval with the existing Erlang helpers. Four default curves (`CURVE_WEEKDAY_VOZ`, `CURVE_SATURDAY`, `CURVE_SUNDAY`, `CURVE_FLAT`) ship as 48 × 30-minute buckets; you can also pass any curve that sums to `1.0`. Optional `max_occupancy` and `shrinkage` flow through to the per-interval math without changing the call shape.
+
+```python
+from mod_turbotab.simulation.intraday import simulate_day, CURVE_WEEKDAY_VOZ
+
+report = simulate_day(
+    daily_volume=1200,
+    arrival_curve=CURVE_WEEKDAY_VOZ,
+    aht=180,
+    sla=0.80,
+    service_time=20,
+    interval_minutes=30,
+)
+
+# report["peak_interval"] -> "10:00"
+# report["peak_agents"]   -> 11
+# report["total_agent_hours"] -> 113.5
+# report["intervals"]     -> [{"start": "00:00", "end": "00:30", "volume": 2, "agents_required": 2, ...}, ...]
+```
+
+With `shrinkage=0.30` each interval row gains a `scheduled_agents` field and the report adds `peak_scheduled_agents` plus `total_scheduled_hours`. The arrival curve is validated to sum to `1.0` within `1e-6`.
+
 ## Limitations
 
 - `number_trunks()` uses a fixed blocking threshold of `0.001`.
 - Some zero-value edge cases still return wrapped calculation errors instead of purpose-built validation messages.
-- Shrinkage, absenteeism, occupancy caps, and intraday simulation are tracked as future work in [`coming_soon/`](coming_soon/).

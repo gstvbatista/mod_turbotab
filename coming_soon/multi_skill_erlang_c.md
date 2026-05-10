@@ -1,5 +1,7 @@
 # Multi-Skill Erlang C
 
+> **Status:** Option A shipped — see [`calculations/multi_skill.py`](../calculations/multi_skill.py) (`agents_required_multi`). Options B (simulation) and C (ECCS) remain open follow-ups; both are documented as `TODO` in the module docstring.
+
 ## Problem
 
 The current library models single-queue, single-skill operations only. Real contact centers often have agents handling multiple skill groups (e.g., billing + tech support), or queues that overflow into shared agent pools.

@@ -67,6 +67,48 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["result"]["unit"], "agents")
         self.assertEqual(payload["result"]["value"], 11)
 
+    def test_staffing_required_max_occupancy_json(self) -> None:
+        result = run_cli(
+            "staffing",
+            "required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--calls-per-interval",
+            "100",
+            "--aht",
+            "180",
+            "--max-occupancy",
+            "0.85",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["inputs"]["max_occupancy"], 0.85)
+        self.assertEqual(payload["result"]["value"], 36)
+
+    def test_staffing_required_invalid_max_occupancy_exits_nonzero(self) -> None:
+        result = run_cli(
+            "staffing",
+            "required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--calls-per-interval",
+            "100",
+            "--aht",
+            "180",
+            "--max-occupancy",
+            "1.5",
+            "--json",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("max_occupancy", result.stderr)
+
     def test_queue_sla_json(self) -> None:
         result = run_cli(
             "sla",

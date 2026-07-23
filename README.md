@@ -353,6 +353,15 @@ except CalculationError:
 
 Erlang C alone can recommend staffing levels that drive sustained occupancy above 90%, which is associated with burnout and attrition. `agents_required` accepts an optional `max_occupancy` ceiling that lifts the headcount whenever the Erlang result would breach it; defaults are unchanged when the parameter is omitted.
 
+CLI:
+
+```bash
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 100 --aht 180 --max-occupancy 0.85 --json
+# {"...": "...", "inputs": {"max_occupancy": 0.85, "...": "..."}, "result": {"name": "agents", "unit": "agents", "value": 36}}
+```
+
+Python API:
+
 ```python
 from mod_turbotab.agents.capacity import (
     agents_required,

@@ -51,6 +51,9 @@ create an issue from that template.
 - **CI**: `.github/workflows/ci.yml` runs the test suite on Python 3.9-3.13
   for every PR and push to `main`. The `tests` summary job is a required
   status check — PRs merge only when it's green. Merges are squash-only.
+- **Review findings**: after pushing a fix for a reviewer finding (Codex or
+  human), mark that review conversation as resolved on the PR, then
+  re-request review (`@codex review`). Don't leave addressed threads open.
 - **Commits**: use conventional commits — `feat:`, `fix:`, `docs:`, `test:`,
   `refactor:`, `chore:`.
 - **External PRs**: this repository does not accept external pull requests

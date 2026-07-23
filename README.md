@@ -1,5 +1,9 @@
 ![mod_turbotab](.github/assets/banner.png)
 
+[![PyPI](https://img.shields.io/pypi/v/mod-turbotab)](https://pypi.org/project/mod-turbotab/)
+[![GitHub release](https://img.shields.io/github/v/release/gstvbatista/mod_turbotab)](https://github.com/gstvbatista/mod_turbotab/releases)
+[![License](https://img.shields.io/github/license/gstvbatista/mod_turbotab)](LICENSE)
+
 CLI-first TurboTable-style calculations for contact-center planning.
 
 `mod_turbotab` keeps the historical name known by call-center planning and traffic analysts, while exposing `turbotab` as the primary interface for humans, scripts, and AI agents.

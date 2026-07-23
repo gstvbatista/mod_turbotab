@@ -35,10 +35,13 @@ Key facts:
 | `skills/mod-turbotab/SKILL.md` | Agent-facing skill definition for the CLI |
 | `README.md` | Primary user-facing API and mathematical model documentation |
 
-Roadmap items (multi-skill Erlang C, occupancy cap, shrinkage/absenteeism,
-intraday simulation) are tracked as GitHub issues labeled `roadmap`, not as
-files in this repo. When picking one up, read the issue for the full
-problem/approach writeup before implementing.
+Roadmap items are tracked as [GitHub issues labeled `roadmap`](https://github.com/gstvbatista/mod_turbotab/issues?q=is%3Aissue+label%3Aroadmap),
+not as files in this repo. Each one is a full spec following the structure in
+[`.github/ISSUE_TEMPLATE/roadmap_spec.md`](.github/ISSUE_TEMPLATE/roadmap_spec.md)
+(Problem → What It Solves → How It Works → API Surface → Complexity →
+Dependencies). When picking one up, read the issue for the full
+problem/approach writeup before implementing; when adding a new roadmap item,
+create an issue from that template.
 
 ## Workflow
 

@@ -42,5 +42,6 @@ packages = [
   "mod_turbotab.agents",
   "mod_turbotab.calculations",
   "mod_turbotab.queues",
+  "mod_turbotab.simulation",
   "mod_turbotab.trunks",
 ]

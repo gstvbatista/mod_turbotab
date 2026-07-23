@@ -306,6 +306,7 @@ The CLI is the primary interface, but the Python API remains available.
 | `calculations.traffic` | `traffic`, `looping_traffic` |
 | `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity`, `occupancy`, `is_within_occupancy` |
 | `queues.queues` | `queued`, `queue_size`, `queue_time`, `service_time`, `sla_metric` |
+| `simulation.intraday` | `simulate_day`, `CURVE_WEEKDAY_VOZ`, `CURVE_SATURDAY`, `CURVE_SUNDAY`, `CURVE_FLAT` |
 | `trunks.trunks` | `number_trunks`, `trunks_required` |
 | `utils` | `min_max`, `int_ceiling`, `secs` |
 
@@ -370,6 +371,30 @@ is_within_occupancy(36, 100, 180, 0.85)                     # True
 ```
 
 The cap is `max(erlang_c, ceil(A / max_occupancy))` where `A = calls_per_interval * aht / interval`.
+
+## Intraday simulation
+
+`simulation.intraday.simulate_day` distributes a daily volume across an arrival curve and sizes every interval with the existing Erlang helpers. Four default curves (`CURVE_WEEKDAY_VOZ`, `CURVE_SATURDAY`, `CURVE_SUNDAY`, `CURVE_FLAT`) ship as 48 × 30-minute buckets; you can also pass any curve that sums to `1.0`. Optional `max_occupancy` and `shrinkage` flow through to the per-interval math without changing the call shape.
+
+```python
+from mod_turbotab.simulation.intraday import simulate_day, CURVE_WEEKDAY_VOZ
+
+report = simulate_day(
+    daily_volume=1200,
+    arrival_curve=CURVE_WEEKDAY_VOZ,
+    aht=180,
+    sla=0.80,
+    service_time=20,
+    interval_minutes=30,
+)
+
+# report["peak_interval"] -> "10:00"
+# report["peak_agents"]   -> 11
+# report["total_agent_hours"] -> 113.5
+# report["intervals"]     -> [{"start": "00:00", "end": "00:30", "volume": 2, "agents_required": 2, ...}, ...]
+```
+
+With `shrinkage=0.30` each interval row gains a `scheduled_agents` field and the report adds `peak_scheduled_agents` plus `total_scheduled_hours`. The arrival curve is validated to sum to `1.0` within `1e-6`.
 
 ## Limitations
 

@@ -122,6 +122,17 @@ class SharingTests(unittest.TestCase):
         totals = run(patience=60)["totals"]
         self.assertEqual(totals["adjusted_total_hc"], 20)
 
+    def test_zero_volume_skill_is_zero_demand(self) -> None:
+        # Skill sem volume não adiciona HC nem exige pool: totais e fit
+        # ficam idênticos ao cenário sem ela.
+        groups = GROUPS + [{"name": "sazonal", "calls_per_interval": 0, "aht": 180}]
+        result = run(groups=groups)
+        sazonal = next(s for s in result["per_skill"] if s["name"] == "sazonal")
+        self.assertEqual(sazonal["baseline_hc"], 0)
+        self.assertEqual(sazonal["adjusted_hc"], 0)
+        self.assertEqual(result["totals"]["adjusted_total_hc"], 20)
+        self.assertTrue(result["totals"]["fits_in_pool_capacity"])
+
 
 class ValidationTests(unittest.TestCase):
     def test_invalid_sharing_factor(self) -> None:

@@ -187,14 +187,19 @@ def agents_required_multi(
         aht: int = int(sg["aht"])
         offered: float = calls * aht / interval
 
-        baseline_hc: int = agents_required(
-            sla=sla,
-            service_time=service_time,
-            calls_per_interval=calls,
-            aht=aht,
-            interval=interval,
-            patience=patience,
-        )
+        if calls == 0:
+            # Skill sem volume previsto: demanda zero — sem o HC mínimo de 1
+            # que agents_required retorna e sem exigir cobertura por pool.
+            baseline_hc: int = 0
+        else:
+            baseline_hc = agents_required(
+                sla=sla,
+                service_time=service_time,
+                calls_per_interval=calls,
+                aht=aht,
+                interval=interval,
+                patience=patience,
+            )
 
         is_cross_skilled: bool = name in cross_skilled_set
         if is_cross_skilled and baseline_hc > 0:

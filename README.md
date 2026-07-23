@@ -1,7 +1,11 @@
-![mod_turbotab](.github/assets/banner.png)
+<p align="center">
+  <img src=".github/assets/banner.png" alt="mod_turbotab">
+</p>
 
-[![PyPI](https://img.shields.io/pypi/v/turbotab?logo=python&logoColor=white&color=3776AB&cacheSeconds=3600)](https://pypi.org/project/turbotab/)
-[![License](https://img.shields.io/github/license/gstvbatista/mod_turbotab?color=3776AB)](LICENSE)
+<p align="center">
+  <a href="https://pypi.org/project/turbotab/"><img src="https://img.shields.io/pypi/v/turbotab?logo=python&logoColor=white&color=3776AB&cacheSeconds=3600" alt="PyPI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/gstvbatista/mod_turbotab?color=3776AB" alt="License"></a>
+</p>
 
 CLI-first TurboTable-style calculations for contact-center planning.
 

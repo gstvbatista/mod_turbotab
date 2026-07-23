@@ -41,8 +41,10 @@ The Option A algorithm:
 4. Floor the adjusted headcount at ``ceil(offered_traffic) + 1`` to keep
    utilization strictly below 100% per skill.
 5. Aggregate totals: naive sum (no sharing), adjusted sum (with sharing),
-   savings, and whether the resulting requirement fits inside the declared
-   ``agent_pools`` capacity.
+   savings, and whether the resulting requirement fits the declared
+   ``agent_pools`` — both in aggregate and per skill (each skill's adjusted
+   headcount must be covered by pools eligible to serve it). The per-skill
+   check is a necessary condition, not a full assignment-feasibility proof.
 
 The function returns a structured dict (no side effects, no I/O), suitable for
 piping into ``--json`` CLI output if the CLI surface picks this up later.
@@ -99,6 +101,8 @@ def agents_required_multi(
                 - ``cross_skilled`` (bool, se algum pool cobre esta skill com
                   outras)
                 - ``occupancy_adjusted`` (float, ``A/N`` no HC ajustado)
+                - ``eligible_pool_hc`` (int, capacidade dos pools que atendem
+                  esta skill)
 
             ``totals`` — agregados:
                 - ``naive_total_hc`` (int, soma dos baselines)
@@ -106,7 +110,9 @@ def agents_required_multi(
                 - ``savings_hc`` (int, diferença)
                 - ``offered_traffic_total`` (float)
                 - ``pool_capacity_hc`` (int, soma dos ``count`` dos pools)
-                - ``fits_in_pool_capacity`` (bool)
+                - ``fits_in_pool_capacity`` (bool; exige capacidade agregada
+                  suficiente E ``eligible_pool_hc >= adjusted_hc`` em toda
+                  skill — condição necessária, não prova de alocação viável)
                 - ``sharing_factor`` (float, ecoado para auditoria)
 
     Raises:
@@ -196,6 +202,14 @@ def agents_required_multi(
             offered / adjusted_hc if adjusted_hc > 0 else 0.0
         )
 
+        # Capacidade elegível: soma dos pools que atendem este skill. Um pool
+        # cross-skilled conta para todos os seus skills, então esta checagem é
+        # condição necessária (não suficiente) de viabilidade — alocação exata
+        # é escopo da Opção B (simulação).
+        eligible_hc: int = sum(
+            p["count"] for p in agent_pools if name in p["skills"]
+        )
+
         per_skill.append(
             {
                 "name": name,
@@ -204,6 +218,7 @@ def agents_required_multi(
                 "adjusted_hc": adjusted_hc,
                 "cross_skilled": is_cross_skilled,
                 "occupancy_adjusted": occupancy_adjusted,
+                "eligible_pool_hc": eligible_hc,
             }
         )
 
@@ -211,6 +226,9 @@ def agents_required_multi(
     adjusted_total: int = sum(s["adjusted_hc"] for s in per_skill)
     offered_total: float = sum(s["offered_traffic"] for s in per_skill)
     pool_capacity: int = sum(p["count"] for p in agent_pools)
+    per_skill_fits: bool = all(
+        s["eligible_pool_hc"] >= s["adjusted_hc"] for s in per_skill
+    )
 
     return {
         "per_skill": per_skill,
@@ -220,7 +238,7 @@ def agents_required_multi(
             "savings_hc": naive_total - adjusted_total,
             "offered_traffic_total": offered_total,
             "pool_capacity_hc": pool_capacity,
-            "fits_in_pool_capacity": adjusted_total <= pool_capacity,
+            "fits_in_pool_capacity": adjusted_total <= pool_capacity and per_skill_fits,
             "sharing_factor": sharing_factor,
         },
     }

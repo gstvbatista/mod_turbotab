@@ -78,6 +78,32 @@ class SharingTests(unittest.TestCase):
         self.assertEqual(totals["pool_capacity_hc"], 5)
         self.assertFalse(totals["fits_in_pool_capacity"])
 
+    def test_uncovered_skill_does_not_fit(self) -> None:
+        # Capacidade agregada (22) cobre o total, mas tech não tem nenhum
+        # pool elegível: o roster é impossível.
+        result = run(pools=[{"skills": ["billing"], "count": 22}])
+        self.assertFalse(result["totals"]["fits_in_pool_capacity"])
+        tech = next(s for s in result["per_skill"] if s["name"] == "tech")
+        self.assertEqual(tech["eligible_pool_hc"], 0)
+
+    def test_skewed_capacity_does_not_fit(self) -> None:
+        # Total 22 bate, mas só 2 agentes podem atender tech (precisa 11).
+        totals = run(
+            pools=[
+                {"skills": ["billing"], "count": 20},
+                {"skills": ["tech"], "count": 2},
+            ]
+        )["totals"]
+        self.assertFalse(totals["fits_in_pool_capacity"])
+
+    def test_cross_pool_counts_for_all_its_skills(self) -> None:
+        # Um único pool cross-skilled com 20 agentes é elegível para ambas
+        # as skills (10 + 10 ajustadas): fits.
+        result = run(pools=[{"skills": ["billing", "tech"], "count": 20}])
+        self.assertTrue(result["totals"]["fits_in_pool_capacity"])
+        for skill in result["per_skill"]:
+            self.assertEqual(skill["eligible_pool_hc"], 20)
+
     def test_patience_passthrough(self) -> None:
         totals = run(patience=60)["totals"]
         self.assertEqual(totals["adjusted_total_hc"], 20)

@@ -56,10 +56,22 @@ create an issue from that template.
 - **External PRs**: this repository does not accept external pull requests
   (see `CONTRIBUTING.md`); they are auto-closed by
   `.github/workflows/close-prs.yml`. PRs from the repository owner are exempt.
-- **Releases**: bump `version` in `pyproject.toml`, then create a GitHub
-  Release (`vX.Y.Z` tag); `.github/workflows/publish.yml` builds and publishes
-  to PyPI automatically via trusted publishing. PyPI versions are immutable —
-  never reuse a version number.
+- **Releases**: bump `version` in `pyproject.toml` in a `chore: release X.Y.Z`
+  commit, then create a GitHub Release; `.github/workflows/publish.yml`
+  builds and publishes to PyPI automatically via trusted publishing. PyPI
+  versions are immutable — never reuse a version number.
+- **Release format**: tag and title are both `vX.Y.Z`, always created with
+  `--generate-notes` so the "What's Changed" PR list and Full Changelog link
+  are appended below the hand-written summary:
+
+  ```bash
+  gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes --notes "<summary>"
+  ```
+
+  The summary for a MINOR (feature) release is: `## <Feature name>`, one
+  paragraph of what/why, a usage example (CLI preferred), and
+  `Closes #<issue> via #<PR>`. For a PATCH release it is a `## Fixes`
+  heading with one bullet per fix: `- <description> (#<PR>)`.
 - **Versioning (semver)**: feature PRs do NOT touch `version`; the bump
   happens in a release commit on `main` right after the merge:
   - **Every merged `feat:` PR ships as its own MINOR release**

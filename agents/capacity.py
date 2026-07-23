@@ -6,7 +6,13 @@ import math
 from mod_turbotab.calculations.erlang import erlang_c, erlang_a
 from mod_turbotab.utils import secs, int_ceiling, min_max
 from mod_turbotab.exceptions import CalculationError, InputValidationError
-def agents_required(sla: float, service_time: int, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
+
+# Tolerância para comparações de ocupação no limite exato: sem ela, erro
+# binário de ponto flutuante (ex.: 35.7/0.85 -> 42.00000000000001) faz o
+# ceil contratar um agente a mais e nega caps atingidos exatamente.
+_OCCUPANCY_EPSILON: float = 1e-9
+
+def agents_required(sla: float, service_time: int, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None, max_occupancy: float = None) -> int:
     """Determina o número de agentes necessários para atingir o SLA desejado.
 
     Args:
@@ -17,6 +23,10 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
+        max_occupancy (float, optional): Ocupação máxima tolerada por agente (0 < x <= 1).
+            Se None, mantém o comportamento original (sem teto de ocupação). Quando definido,
+            o resultado é ``max(erlang_c, ceil(A / max_occupancy))``, garantindo que a ocupação
+            ``A/N`` não ultrapasse o limite informado.
 
     Returns:
         int: Número de agentes requeridos.
@@ -27,6 +37,8 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
     """
     if sla < 0 or calls_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para agents_required.")
+    if max_occupancy is not None and not (0 < max_occupancy <= 1):
+        raise InputValidationError("max_occupancy deve estar no intervalo (0, 1].")
     try:
         sla = min(sla, 1.0)
         birth_rate: float = calls_per_interval
@@ -53,9 +65,53 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
                 hi = mid
             else:
                 lo = mid + 1
+        if max_occupancy is not None:
+            occupancy_floor: int = int(math.ceil(traffic_rate / max_occupancy - _OCCUPANCY_EPSILON))
+            return max(lo, occupancy_floor)
         return lo
     except Exception as e:
         raise CalculationError(f"Erro em agents_required: {str(e)}") from e
+
+def occupancy(agents: int, calls_per_interval: float, aht: int, interval: float = 600.0) -> float:
+    """Calcula a ocupação atual (A/N) para um número de agentes.
+
+    Args:
+        agents (int): Número de agentes.
+        calls_per_interval (float): Chamadas por intervalo.
+        aht (int): Duração média da chamada (em segundos).
+        interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
+
+    Returns:
+        float: Razão de ocupação ``A/N`` (tráfego ofertado / agentes).
+
+    Raises:
+        InputValidationError: Se os parâmetros forem inválidos.
+    """
+    if agents <= 0 or calls_per_interval < 0 or aht <= 0 or interval <= 0:
+        raise InputValidationError("Parâmetros inválidos para occupancy.")
+    traffic_rate: float = calls_per_interval * aht / interval
+    return traffic_rate / agents
+
+def is_within_occupancy(agents: int, calls_per_interval: float, aht: int, max_occupancy: float, interval: float = 600.0) -> bool:
+    """Verifica se a ocupação está dentro do limite informado.
+
+    Args:
+        agents (int): Número de agentes.
+        calls_per_interval (float): Chamadas por intervalo.
+        aht (int): Duração média da chamada (em segundos).
+        max_occupancy (float): Ocupação máxima tolerada (0 < x <= 1).
+        interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
+
+    Returns:
+        bool: ``True`` se ``A/N <= max_occupancy``, ``False`` caso contrário.
+
+    Raises:
+        InputValidationError: Se os parâmetros forem inválidos.
+    """
+    if not (0 < max_occupancy <= 1):
+        raise InputValidationError("max_occupancy deve estar no intervalo (0, 1].")
+    return occupancy(agents, calls_per_interval, aht, interval=interval) <= max_occupancy + _OCCUPANCY_EPSILON
+
 
 def asa(agents: float, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
     """Calcula o Average Speed of Answer (ASA) para um dado número de agentes.

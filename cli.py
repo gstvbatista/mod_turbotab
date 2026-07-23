@@ -99,6 +99,7 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_aht_arg(required)
     _add_interval_arg(required)
     _add_patience_arg(required)
+    _add_max_occupancy_arg(required)
     _set_handler(required, "staffing.required", "agents", "agents", agents_required)
 
     asa_parser = commands.add_parser("asa", help="Calculate average speed of answer in seconds.")
@@ -243,6 +244,7 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_aht_arg(required)
     _add_interval_arg(required)
     _add_patience_arg(required)
+    _add_max_occupancy_arg(required)
     _set_handler(required, "agents.required", "agents", "agents", agents_required)
 
     asa_parser = commands.add_parser("asa", help="Calculate average speed of answer in seconds.")
@@ -491,6 +493,16 @@ def _add_patience_arg(parser: argparse.ArgumentParser, required: bool = False) -
         default=None,
         required=required,
         help="Average caller patience in seconds for Erlang A calculations.",
+    )
+
+
+def _add_max_occupancy_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--max-occupancy",
+        dest="max_occupancy",
+        type=float,
+        default=None,
+        help="Maximum sustained occupancy per agent, in (0, 1]. Lifts headcount to keep A/N under the cap.",
     )
 
 

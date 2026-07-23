@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   close:
+    if: github.event.pull_request.user.login != github.repository_owner
     runs-on: ubuntu-latest
     steps:
       - name: Comment and close

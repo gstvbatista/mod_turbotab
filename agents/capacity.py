@@ -81,7 +81,7 @@ def occupancy(agents: int, calls_per_interval: float, aht: int, interval: float 
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
     """
-    if agents <= 0 or calls_per_interval < 0 or aht <= 0:
+    if agents <= 0 or calls_per_interval < 0 or aht <= 0 or interval <= 0:
         raise InputValidationError("Parâmetros inválidos para occupancy.")
     traffic_rate: float = calls_per_interval * aht / interval
     return traffic_rate / agents

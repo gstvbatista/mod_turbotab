@@ -67,6 +67,14 @@ class OccupancyTests(unittest.TestCase):
             occupancy(11, -1, 180)
         with self.assertRaises(InputValidationError):
             occupancy(11, 25, 0)
+        with self.assertRaises(InputValidationError):
+            occupancy(11, 25, 180, interval=0)
+        with self.assertRaises(InputValidationError):
+            occupancy(11, 25, 180, interval=-600)
+
+    def test_invalid_interval_raises_through_is_within(self) -> None:
+        with self.assertRaises(InputValidationError):
+            is_within_occupancy(11, 25, 180, 0.85, interval=-600)
 
 
 class IsWithinOccupancyTests(unittest.TestCase):

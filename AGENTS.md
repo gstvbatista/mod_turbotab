@@ -58,12 +58,13 @@ create an issue from that template.
   to PyPI automatically via trusted publishing. PyPI versions are immutable —
   never reuse a version number.
 - **Versioning (semver)**: feature PRs do NOT touch `version`; the bump
-  happens in a release commit right before tagging, sized by the commits
-  merged since the last tag:
-  - **PATCH** (`0.1.0 -> 0.1.1`): only `fix:`/`docs:`/`chore:` landed — no
-    new public surface.
-  - **MINOR** (`0.1.0 -> 0.2.0`): any `feat:` landed — new calculation, CLI
-    flag, module, or additive JSON output field.
+  happens in a release commit on `main` right after the merge:
+  - **Every merged `feat:` PR ships as its own MINOR release**
+    (`0.1.0 -> 0.2.0`): merge, bump `version`, tag, GitHub Release. No
+    batching — one feature, one release.
+  - **PATCH** (`0.2.0 -> 0.2.1`): `fix:` merges; these may batch — cut the
+    release when the fixes matter to users.
+  - **`docs:`/`chore:`/`test:`-only merges never trigger a release.**
   - **MAJOR** (`x.y.z -> (x+1).0.0`): any breaking change — renamed/removed
     public function, CLI flag, or JSON output field. A `schema_version` bump
     in `cli.py` implies at least this.

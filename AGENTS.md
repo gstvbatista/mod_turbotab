@@ -48,6 +48,9 @@ create an issue from that template.
 - **Branches**: code changes go through a `feat/*` (or `fix/*`, `docs/*`)
   branch merged into `main` via pull request. Committing directly to `main`
   is acceptable only for trivial docs/config touches.
+- **CI**: `.github/workflows/ci.yml` runs the test suite on Python 3.9-3.13
+  for every PR and push to `main`. The `tests` summary job is a required
+  status check — PRs merge only when it's green. Merges are squash-only.
 - **Commits**: use conventional commits — `feat:`, `fix:`, `docs:`, `test:`,
   `refactor:`, `chore:`.
 - **External PRs**: this repository does not accept external pull requests

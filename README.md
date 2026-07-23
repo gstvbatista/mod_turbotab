@@ -1,5 +1,3 @@
-# mod_turbotab
-
 ![mod_turbotab](.github/assets/banner.png)
 
 CLI-first TurboTable-style calculations for contact-center planning.

@@ -52,8 +52,10 @@ create an issue from that template.
   for every PR and push to `main`. The `tests` summary job is a required
   status check — PRs merge only when it's green. Merges are squash-only.
 - **Review findings**: after pushing a fix for a reviewer finding (Codex or
-  human), mark that review conversation as resolved on the PR, then
-  re-request review (`@codex review`). Don't leave addressed threads open.
+  human), reply in that thread with what changed and the commit hash (for
+  traceability), then mark the conversation as resolved and re-request
+  review (`@codex review`). Don't leave addressed threads open or resolve
+  them silently.
 - **Commits**: use conventional commits — `feat:`, `fix:`, `docs:`, `test:`,
   `refactor:`, `chore:`.
 - **External PRs**: this repository does not accept external pull requests

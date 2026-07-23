@@ -97,6 +97,12 @@ create an issue from that template.
   in English.
 - Avoid broad refactors when fixing formulas. Make the smallest change that
   can be validated.
+- README style: deep-dive content goes inside the existing `<details>`
+  blocks (Mathematical model, API reference, ...), not as new top-level
+  sections. Formulas belong in the Mathematical model block as ```math
+  blocks using the notation table's symbols — never as inline pseudo-code
+  like `A = calls * aht / interval`. New public functions get a row in the
+  API reference table; CLI flags are documented by their `--help` text.
 
 ## Validation
 

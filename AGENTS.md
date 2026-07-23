@@ -118,7 +118,18 @@ files are staged.
   the historical failure points in this kind of library.
 - Verify unit consistency across a change (seconds vs. intervals, `aht` vs.
   `service_time`) since several modules share the same traffic assumptions.
+- Treat the CLI's `--json` output as a public API: flag any rename, removal,
+  or type change of an output field that isn't paired with a
+  `schema_version` bump in `cli.py` — scripts and agents consume this
+  contract.
+- Flag any rewrite of the Erlang recurrences into closed-form
+  factorial/power expressions: the iterative form in
+  `calculations/erlang.py` exists to avoid float overflow at high server
+  counts, and the textbook formula reintroduces it.
+- Flag changes to the search/inversion loops in `calculations/traffic.py`
+  that drop or lack an iteration cap or convergence guard — an unbounded
+  `while` there can hang on non-converging inputs.
 - If a CLI flag or output field is renamed or removed, confirm the README
   examples were updated to match.
-- Do not flag missing third-party dependency pinning — this project
-  intentionally has zero runtime dependencies.
+- Flag any new third-party import — this project intentionally has zero
+  runtime dependencies. Conversely, do not flag missing dependency pinning.

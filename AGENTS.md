@@ -57,6 +57,19 @@ create an issue from that template.
   Release (`vX.Y.Z` tag); `.github/workflows/publish.yml` builds and publishes
   to PyPI automatically via trusted publishing. PyPI versions are immutable —
   never reuse a version number.
+- **Versioning (semver)**: feature PRs do NOT touch `version`; the bump
+  happens in a release commit right before tagging, sized by the commits
+  merged since the last tag:
+  - **PATCH** (`0.1.0 -> 0.1.1`): only `fix:`/`docs:`/`chore:` landed — no
+    new public surface.
+  - **MINOR** (`0.1.0 -> 0.2.0`): any `feat:` landed — new calculation, CLI
+    flag, module, or additive JSON output field.
+  - **MAJOR** (`x.y.z -> (x+1).0.0`): any breaking change — renamed/removed
+    public function, CLI flag, or JSON output field. A `schema_version` bump
+    in `cli.py` implies at least this.
+  - While the project is `0.x`, a breaking change may ship as a MINOR bump
+    instead of MAJOR, but must be called out prominently in the release
+    notes.
 
 ## Working rules
 

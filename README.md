@@ -384,4 +384,4 @@ The cap is `max(erlang_c, ceil(A / max_occupancy))` where `A = calls_per_interva
 
 - `number_trunks()` uses a fixed blocking threshold of `0.001`.
 - Some zero-value edge cases still return wrapped calculation errors instead of purpose-built validation messages.
-- Shrinkage, absenteeism, occupancy caps, and intraday simulation are tracked as future work — see issues labeled [`roadmap`](https://github.com/gstvbatista/mod_turbotab/issues?q=is%3Aissue+label%3Aroadmap).
+- Shrinkage, absenteeism, and intraday simulation are tracked as future work — see issues labeled [`roadmap`](https://github.com/gstvbatista/mod_turbotab/issues?q=is%3Aissue+label%3Aroadmap).

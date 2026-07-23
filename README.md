@@ -304,7 +304,7 @@ The CLI is the primary interface, but the Python API remains available.
 |---|---|
 | `calculations.erlang` | `erlang_b`, `erlang_b_ext`, `engset_b`, `erlang_c`, `erlang_a` |
 | `calculations.traffic` | `traffic`, `looping_traffic` |
-| `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity` |
+| `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity`, `occupancy`, `is_within_occupancy` |
 | `queues.queues` | `queued`, `queue_size`, `queue_time`, `service_time`, `sla_metric` |
 | `trunks.trunks` | `number_trunks`, `trunks_required` |
 | `utils` | `min_max`, `int_ceiling`, `secs` |
@@ -348,6 +348,28 @@ except CalculationError:
 ```
 
 </details>
+
+## Occupancy cap
+
+Erlang C alone can recommend staffing levels that drive sustained occupancy above 90%, which is associated with burnout and attrition. `agents_required` accepts an optional `max_occupancy` ceiling that lifts the headcount whenever the Erlang result would breach it; defaults are unchanged when the parameter is omitted.
+
+```python
+from mod_turbotab.agents.capacity import (
+    agents_required,
+    occupancy,
+    is_within_occupancy,
+)
+
+agents_required(0.80, 20, 25, 180)                          # 11 (no cap)
+agents_required(0.80, 20, 25, 180, max_occupancy=0.85)      # 11 (already under 85%)
+agents_required(0.80, 20, 100, 180, max_occupancy=0.85)     # 36 (lifted from Erlang result to keep A/N <= 0.85)
+
+occupancy(11, 25, 180)                                      # 0.6818  (A/N)
+is_within_occupancy(33, 100, 180, 0.85)                     # False
+is_within_occupancy(36, 100, 180, 0.85)                     # True
+```
+
+The cap is `max(erlang_c, ceil(A / max_occupancy))` where `A = calls_per_interval * aht / interval`.
 
 ## Limitations
 

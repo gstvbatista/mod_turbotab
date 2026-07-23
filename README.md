@@ -243,6 +243,7 @@ Notation:
 | `B(N, A)` | Erlang B blocking probability |
 | `C(N, A)` | Erlang C queueing probability |
 | `rho_max` | Optional occupancy cap (`max_occupancy`) |
+| `s` | Multi-skill sharing factor (`sharing_factor`) |
 
 Core conversions:
 
@@ -302,6 +303,14 @@ N = \max\left(N_{\mathrm{Erlang}},\ \left\lceil \frac{A}{\rho_{\max}} \right\rce
 
 With `max_occupancy=None` the cap is skipped and the Erlang result is returned unchanged.
 
+Multi-skill dimensioning (`agents_required_multi`, Option A): each skill group `k` is first sized as an independent Erlang C queue, giving `N_k^{C}`. Skills served by at least one cross-skilled pool then receive the sharing factor `s`, floored so per-skill utilization stays strictly below 100%:
+
+```math
+N_k = \max\left(\left\lceil A_k \right\rceil + 1,\ \left\lceil s \cdot N_k^{C} \right\rceil\right)
+```
+
+Skills served only by dedicated pools keep `N_k = N_k^{C}`, reproducing the single-skill result.
+
 </details>
 
 <details>
@@ -313,6 +322,7 @@ The CLI is the primary interface, but the Python API remains available.
 |---|---|
 | `calculations.erlang` | `erlang_b`, `erlang_b_ext`, `engset_b`, `erlang_c`, `erlang_a` |
 | `calculations.traffic` | `traffic`, `looping_traffic` |
+| `calculations.multi_skill` | `agents_required_multi` |
 | `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity`, `occupancy`, `is_within_occupancy` |
 | `queues.queues` | `queued`, `queue_size`, `queue_time`, `service_time`, `sla_metric` |
 | `trunks.trunks` | `number_trunks`, `trunks_required` |
@@ -329,6 +339,28 @@ agents = agents_required(
     calls_per_interval=25,
     aht=180,
 )
+```
+
+Multi-skill example — dedicated pools plus a cross-skilled pool sharing billing and tech:
+
+```python
+from mod_turbotab.calculations.multi_skill import agents_required_multi
+
+result = agents_required_multi(
+    skill_groups=[
+        {"name": "billing", "calls_per_interval": 25, "aht": 180},
+        {"name": "tech",    "calls_per_interval": 20, "aht": 240},
+    ],
+    agent_pools=[
+        {"skills": ["billing"],         "count": 8},
+        {"skills": ["tech"],            "count": 9},
+        {"skills": ["billing", "tech"], "count": 6},
+    ],
+    sla=0.80,
+    service_time=20,
+)
+
+result["totals"]  # {"naive_total_hc": 22, "adjusted_total_hc": 20, "savings_hc": 2, ...}
 ```
 
 </details>

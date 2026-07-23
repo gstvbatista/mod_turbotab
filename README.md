@@ -1,5 +1,7 @@
 # mod_turbotab
 
+![mod_turbotab](.github/assets/banner.png)
+
 CLI-first TurboTable-style calculations for contact-center planning.
 
 `mod_turbotab` keeps the historical name known by call-center planning and traffic analysts, while exposing `turbotab` as the primary interface for humans, scripts, and AI agents.

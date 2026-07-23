@@ -68,10 +68,39 @@ create an issue from that template.
   gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes --notes "<summary>"
   ```
 
-  The summary for a MINOR (feature) release is: `## <Feature name>`, one
-  paragraph of what/why, a usage example (CLI preferred), and
-  `Closes #<issue> via #<PR>`. For a PATCH release it is a `## Fixes`
-  heading with one bullet per fix: `- <description> (#<PR>)`.
+  The hand-written summary is not a one-liner — it tells the story of the
+  release. MINOR (feature) releases follow this structure:
+
+  ```markdown
+  ## <Feature name>
+
+  <2-3 paragraphs: the operational problem this solves (speak to the
+  WFM/planning audience, not just developers), what shipped, how it
+  behaves, and the defaults/edge cases worth knowing about.>
+
+  ### Usage
+
+  <CLI example with real numbers and expected output; Python example
+  when the API surface is the point.>
+
+  ### Changes
+
+  - Added: <new functions, flags, modules>
+  - Changed: <behavior changes, even compatible ones>
+  - Fixed: <fixes that rode along>
+
+  ### Compatibility
+
+  - <breaking changes with migration notes, or "No breaking changes —
+    defaults preserve previous behavior.">
+  - Supported Python: 3.9-3.13
+
+  Closes #<issue> via #<PR>
+  ```
+
+  PATCH releases use `## Fixes` with one detailed bullet per fix —
+  symptom, cause, and what changed: `- <symptom>: <what was wrong and
+  what changed> (#<PR>)`.
 - **Versioning (semver)**: feature PRs do NOT touch `version`; the bump
   happens in a release commit on `main` right after the merge:
   - **Every merged `feat:` PR ships as its own MINOR release**

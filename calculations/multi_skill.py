@@ -130,6 +130,8 @@ def agents_required_multi(
         raise InputValidationError("service_time deve ser >= 0.")
     if interval <= 0:
         raise InputValidationError("interval deve ser > 0.")
+    if patience is not None and patience <= 0:
+        raise InputValidationError("patience deve ser > 0 quando informada.")
 
     seen_names = set()
     for sg in skill_groups:
@@ -159,6 +161,10 @@ def agents_required_multi(
         if not isinstance(pool["skills"], list) or not pool["skills"]:
             raise InputValidationError(
                 "pool.skills deve ser uma lista não-vazia."
+            )
+        if len(set(pool["skills"])) != len(pool["skills"]):
+            raise InputValidationError(
+                "pool.skills não pode repetir a mesma skill."
             )
         if pool["count"] < 0:
             raise InputValidationError("pool.count não pode ser negativo.")

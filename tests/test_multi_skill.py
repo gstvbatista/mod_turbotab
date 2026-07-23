@@ -138,6 +138,19 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaises(InputValidationError):
             run(pools=[{"skills": ["billing"], "count": -1}])
 
+    def test_non_positive_patience_rejected(self) -> None:
+        # patience <= 0 degenera o Erlang A (SLA=1) e reduziria o HC
+        # silenciosamente; deve falhar na validação.
+        for bad in (0, -60):
+            with self.assertRaises(InputValidationError):
+                run(patience=bad)
+
+    def test_pool_with_duplicated_skill_rejected(self) -> None:
+        # ["billing", "billing"] marcaria billing como cross-skilled sem
+        # nenhuma segunda skill coberta.
+        with self.assertRaises(InputValidationError):
+            run(pools=[{"skills": ["billing", "billing"], "count": 10}])
+
     def test_invalid_scalars(self) -> None:
         with self.assertRaises(InputValidationError):
             run(sla=1.5)

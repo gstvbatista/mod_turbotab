@@ -96,6 +96,20 @@ class SharingTests(unittest.TestCase):
         )["totals"]
         self.assertFalse(totals["fits_in_pool_capacity"])
 
+    def test_overlapping_shared_pool_shortfall_does_not_fit(self) -> None:
+        # billing e tech (10 ajustados cada) só têm um pool compartilhado de
+        # 10 agentes; capacidade agregada e por-skill "batem", mas 20 agentes
+        # não saem de um pool de 10 — só o fluxo máximo pega este caso.
+        groups = GROUPS + [{"name": "retencao", "calls_per_interval": 25, "aht": 180}]
+        result = run(
+            groups=groups,
+            pools=[
+                {"skills": ["retencao"], "count": 30},
+                {"skills": ["billing", "tech"], "count": 10},
+            ],
+        )
+        self.assertFalse(result["totals"]["fits_in_pool_capacity"])
+
     def test_cross_pool_counts_for_all_its_skills(self) -> None:
         # Um único pool cross-skilled com 20 agentes é elegível para ambas
         # as skills (10 + 10 ajustadas): fits.

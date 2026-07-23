@@ -42,9 +42,9 @@ The Option A algorithm:
    utilization strictly below 100% per skill.
 5. Aggregate totals: naive sum (no sharing), adjusted sum (with sharing),
    savings, and whether the resulting requirement fits the declared
-   ``agent_pools`` — both in aggregate and per skill (each skill's adjusted
-   headcount must be covered by pools eligible to serve it). The per-skill
-   check is a necessary condition, not a full assignment-feasibility proof.
+   ``agent_pools``. The fit check solves the underlying assignment problem
+   exactly via bipartite max-flow (Edmonds-Karp, pure Python), so
+   overlapping shared pools are not double-counted across skills.
 
 The function returns a structured dict (no side effects, no I/O), suitable for
 piping into ``--json`` CLI output if the CLI surface picks this up later.
@@ -110,9 +110,9 @@ def agents_required_multi(
                 - ``savings_hc`` (int, diferença)
                 - ``offered_traffic_total`` (float)
                 - ``pool_capacity_hc`` (int, soma dos ``count`` dos pools)
-                - ``fits_in_pool_capacity`` (bool; exige capacidade agregada
-                  suficiente E ``eligible_pool_hc >= adjusted_hc`` em toda
-                  skill — condição necessária, não prova de alocação viável)
+                - ``fits_in_pool_capacity`` (bool; viabilidade exata da
+                  alocação pools -> skills, decidida por fluxo máximo — pools
+                  compartilhados não são contados em dobro entre skills)
                 - ``sharing_factor`` (float, ecoado para auditoria)
 
     Raises:
@@ -208,10 +208,8 @@ def agents_required_multi(
             offered / adjusted_hc if adjusted_hc > 0 else 0.0
         )
 
-        # Capacidade elegível: soma dos pools que atendem este skill. Um pool
-        # cross-skilled conta para todos os seus skills, então esta checagem é
-        # condição necessária (não suficiente) de viabilidade — alocação exata
-        # é escopo da Opção B (simulação).
+        # Capacidade elegível: soma dos pools que atendem este skill (campo
+        # de diagnóstico; a viabilidade real é decidida por fluxo máximo).
         eligible_hc: int = sum(
             p["count"] for p in agent_pools if name in p["skills"]
         )
@@ -232,9 +230,6 @@ def agents_required_multi(
     adjusted_total: int = sum(s["adjusted_hc"] for s in per_skill)
     offered_total: float = sum(s["offered_traffic"] for s in per_skill)
     pool_capacity: int = sum(p["count"] for p in agent_pools)
-    per_skill_fits: bool = all(
-        s["eligible_pool_hc"] >= s["adjusted_hc"] for s in per_skill
-    )
 
     return {
         "per_skill": per_skill,
@@ -244,7 +239,72 @@ def agents_required_multi(
             "savings_hc": naive_total - adjusted_total,
             "offered_traffic_total": offered_total,
             "pool_capacity_hc": pool_capacity,
-            "fits_in_pool_capacity": adjusted_total <= pool_capacity and per_skill_fits,
+            "fits_in_pool_capacity": _pools_cover_requirement(per_skill, agent_pools),
             "sharing_factor": sharing_factor,
         },
     }
+
+
+def _pools_cover_requirement(per_skill: list, agent_pools: list) -> bool:
+    """Decide se os pools cobrem o HC ajustado via fluxo máximo (Edmonds-Karp).
+
+    Modela o problema de alocação como um grafo bipartite: fonte -> pool
+    (capacidade ``count``), pool -> skill que ele atende (capacidade
+    ilimitada) e skill -> sumidouro (capacidade ``adjusted_hc``). Os pools
+    cobrem o requisito se, e somente se, o fluxo máximo igualar a demanda
+    total — checagens agregadas ou por skill deixam passar déficits em
+    subconjuntos sobrepostos (ex.: duas skills de 10 disputando um único
+    pool compartilhado de 10).
+    """
+    demand_total: int = sum(s["adjusted_hc"] for s in per_skill)
+    if demand_total == 0:
+        return True
+
+    # Nós: 0 = fonte, 1..P = pools, P+1..P+S = skills, último = sumidouro.
+    source: int = 0
+    pool_base: int = 1
+    skill_base: int = pool_base + len(agent_pools)
+    sink: int = skill_base + len(per_skill)
+    skill_index = {s["name"]: skill_base + i for i, s in enumerate(per_skill)}
+
+    capacity: dict = {}
+
+    def _add_edge(u: int, v: int, cap: int) -> None:
+        capacity.setdefault(u, {})[v] = capacity.get(u, {}).get(v, 0) + cap
+        capacity.setdefault(v, {}).setdefault(u, 0)
+
+    for i, pool in enumerate(agent_pools):
+        _add_edge(source, pool_base + i, int(pool["count"]))
+        for sk in pool["skills"]:
+            _add_edge(pool_base + i, skill_index[sk], int(pool["count"]))
+    for s in per_skill:
+        _add_edge(skill_index[s["name"]], sink, int(s["adjusted_hc"]))
+
+    max_flow: int = 0
+    while True:
+        # BFS por caminho aumentante.
+        parent = {source: None}
+        queue = [source]
+        while queue and sink not in parent:
+            u = queue.pop(0)
+            for v, cap in capacity.get(u, {}).items():
+                if cap > 0 and v not in parent:
+                    parent[v] = u
+                    queue.append(v)
+        if sink not in parent:
+            break
+        bottleneck = demand_total
+        v = sink
+        while parent[v] is not None:
+            u = parent[v]
+            bottleneck = min(bottleneck, capacity[u][v])
+            v = u
+        v = sink
+        while parent[v] is not None:
+            u = parent[v]
+            capacity[u][v] -= bottleneck
+            capacity[v][u] += bottleneck
+            v = u
+        max_flow += bottleneck
+
+    return max_flow >= demand_total

@@ -27,7 +27,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: Output of `pip show mod-turbotab` or the git commit you're on.
+      description: Output of `pip show turbotab` or the git commit you're on.
     validations:
       required: true
   - type: input

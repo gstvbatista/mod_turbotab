@@ -1,48 +1,62 @@
 # AGENTS.md
 
-<mission>
-You are working in the `mod_turbotab` repository.
+Guidance for AI agents (and humans) working in this repository.
+
+## Project
 
 `mod_turbotab` is a pure-Python telecom and contact-center capacity library,
 exposed primarily through the `turbotab` CLI. It implements Erlang-style
 queueing formulas, staffing calculations, queue metrics, and trunk sizing
 helpers, with `--json` output designed for scripts and AI agents as much as
 humans.
-</mission>
 
-<workspace>
-- Repository: `https://github.com/gstvbatista/mod_turbotab`
-- Default branch: `main`
-- Runtime: Python >= 3.9
-- Runtime dependencies: none
-- Packaging: `pyproject.toml`, published on PyPI as `turbotab`
-  (`pip install turbotab`), console script `turbotab -> mod_turbotab.cli:main`
-</workspace>
+Key facts:
 
-<repository-map>
-- `cli.py`: the `turbotab` CLI entry point (argument parsing, command groups,
-  `--json` output).
-- `calculations/erlang.py`: Erlang B, extended Erlang B, Engset B, Erlang C,
-  and Erlang A helpers.
-- `calculations/traffic.py`: inversion/search helpers for traffic intensity.
-- `agents/capacity.py`: staffing, ASA, call capacity, and fractional staffing
-  calculations.
-- `queues/queues.py`: queued percentage, queue size, wait time, service time,
-  and achieved SLA metrics.
-- `trunks/trunks.py`: telephony trunk sizing calculations.
-- `utils.py`: small numeric helpers such as clamping, ceiling, and interval
-  conversion.
-- `exceptions.py`: project-specific exception classes.
-- `tests/test_cli.py`: CLI behavior tests (`python3 -m unittest discover -s tests`).
-- `skills/mod-turbotab/SKILL.md`: agent-facing skill definition for the
-  `turbotab` CLI.
-- `README.md`: primary user-facing API and mathematical model documentation.
-- Roadmap items (multi-skill Erlang C, occupancy cap, shrinkage/absenteeism,
-  intraday simulation) are tracked as GitHub issues labeled `roadmap`, not as
-  files in this repo.
-</repository-map>
+- Repository: `https://github.com/gstvbatista/mod_turbotab`, default branch `main`
+- Runtime: Python >= 3.9, zero runtime dependencies (intentional)
+- Published on PyPI as `turbotab` (`pip install turbotab`); console script
+  `turbotab -> mod_turbotab.cli:main`
+- The package root maps to the repo root (`package-dir` in `pyproject.toml`),
+  so `import mod_turbotab` resolves from the repo's *parent* directory
 
-<working-rules>
+## Repository map
+
+| Path | Purpose |
+|---|---|
+| `cli.py` | `turbotab` CLI entry point: argument parsing, command groups, `--json` output |
+| `calculations/erlang.py` | Erlang B, extended Erlang B, Engset B, Erlang C, Erlang A |
+| `calculations/traffic.py` | Inversion/search helpers for traffic intensity |
+| `agents/capacity.py` | Staffing, ASA, call capacity, fractional staffing |
+| `queues/queues.py` | Queued percentage, queue size, wait time, service time, achieved SLA |
+| `trunks/trunks.py` | Telephony trunk sizing |
+| `utils.py` | Numeric helpers: clamping, ceiling, interval conversion |
+| `exceptions.py` | Project-specific exception classes |
+| `tests/test_cli.py` | CLI behavior tests |
+| `skills/mod-turbotab/SKILL.md` | Agent-facing skill definition for the CLI |
+| `README.md` | Primary user-facing API and mathematical model documentation |
+
+Roadmap items (multi-skill Erlang C, occupancy cap, shrinkage/absenteeism,
+intraday simulation) are tracked as GitHub issues labeled `roadmap`, not as
+files in this repo. When picking one up, read the issue for the full
+problem/approach writeup before implementing.
+
+## Workflow
+
+- **Branches**: code changes go through a `feat/*` (or `fix/*`, `docs/*`)
+  branch merged into `main` via pull request. Committing directly to `main`
+  is acceptable only for trivial docs/config touches.
+- **Commits**: use conventional commits — `feat:`, `fix:`, `docs:`, `test:`,
+  `refactor:`, `chore:`.
+- **External PRs**: this repository does not accept external pull requests
+  (see `CONTRIBUTING.md`); they are auto-closed by
+  `.github/workflows/close-prs.yml`. PRs from the repository owner are exempt.
+- **Releases**: bump `version` in `pyproject.toml`, then create a GitHub
+  Release (`vX.Y.Z` tag); `.github/workflows/publish.yml` builds and publishes
+  to PyPI automatically via trusted publishing. PyPI versions are immutable —
+  never reuse a version number.
+
+## Working rules
+
 - Keep changes scoped to the Python library/CLI surface, tests, and README
   unless the task explicitly asks for packaging, CI, or release work.
 - Preserve public API and CLI flag names already documented in `README.md`
@@ -50,27 +64,25 @@ humans.
 - Treat units carefully: call volumes are `calls_per_interval`; the default
   `interval` is `600.0` seconds, so default examples are 10-minute buckets.
 - Prefer small, isolated changes. Shared formula changes can affect agents,
-  queues, and trunks behavior at once.
+  queues, and trunks behavior at once — when changing one formula, inspect
+  the related queue, capacity, and README documentation paths.
 - Do not add third-party runtime dependencies without explicit approval.
-- This repository does not accept external pull requests (see
-  `CONTRIBUTING.md`); external PRs are auto-closed by
-  `.github/workflows/close-prs.yml`.
-</working-rules>
 
-<code-style>
+## Code style
+
 - Existing source uses type hints, module docstrings in Portuguese, and
   project-specific exceptions for validation/calculation failures.
 - Prefer clear mathematical variable names that match the README terminology:
-  `traffic_rate`, `birth_rate`, `death_rate`, `utilisation`, `sla`, `aht`, and
+  `traffic_rate`, `birth_rate`, `death_rate`, `utilisation`, `sla`, `aht`,
   `interval`.
 - Keep docstrings consistent with nearby code. Portuguese is acceptable and
-  currently predominant in source docstrings; README and CLI help text are in
-  English.
+  currently predominant in source docstrings; README and CLI help text are
+  in English.
 - Avoid broad refactors when fixing formulas. Make the smallest change that
   can be validated.
-</code-style>
 
-<validation>
+## Validation
+
 Run the test suite from the repository root:
 
 ```bash
@@ -92,7 +104,6 @@ For behavioral changes, add or update a focused test in `tests/test_cli.py`
 
 Before finishing, run `git status --short` and confirm only the intended
 files are staged.
-</validation>
 
 ## Code Review Rules
 
@@ -108,11 +119,3 @@ files are staged.
   examples were updated to match.
 - Do not flag missing third-party dependency pinning — this project
   intentionally has zero runtime dependencies.
-
-<future-work-notes>
-- Roadmap items live as GitHub issues labeled `roadmap`, not markdown files
-  in the repo. When picking up one of these, read the linked issue for the
-  full problem/approach writeup before implementing.
-- Several modules share traffic/unit assumptions. When changing one formula,
-  inspect the related queue, capacity, and README documentation paths.
-</future-work-notes>

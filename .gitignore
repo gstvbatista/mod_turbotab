@@ -174,5 +174,4 @@ cython_debug/
 .pypirc
 
 # Local Codex/agent workspace instructions
-/AGENTS.md
 /.genie/

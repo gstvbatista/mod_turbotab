@@ -77,10 +77,14 @@ Run the test suite from the repository root:
 python3 -m unittest discover -s tests
 ```
 
-For a quick manual check of a specific calculation:
+For a quick manual check of a specific calculation, put the repository's
+parent directory on `PYTHONPATH` (the package root maps to the repo root, so
+`import mod_turbotab` resolves from one level up — the same trick
+`tests/test_cli.py` uses):
 
 ```bash
-python3 -c "from mod_turbotab.agents.capacity import agents_required; print(agents_required(0.80, 20, 25, 180))"
+PYTHONPATH=.. python3 -c "from mod_turbotab.agents.capacity import agents_required; print(agents_required(0.80, 20, 25, 180))"
+# expected output: 11 (matches the README quick-start example)
 ```
 
 For behavioral changes, add or update a focused test in `tests/test_cli.py`

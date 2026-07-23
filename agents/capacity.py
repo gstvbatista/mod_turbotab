@@ -6,6 +6,12 @@ import math
 from mod_turbotab.calculations.erlang import erlang_c, erlang_a
 from mod_turbotab.utils import secs, int_ceiling, min_max
 from mod_turbotab.exceptions import CalculationError, InputValidationError
+
+# Tolerância para comparações de ocupação no limite exato: sem ela, erro
+# binário de ponto flutuante (ex.: 35.7/0.85 -> 42.00000000000001) faz o
+# ceil contratar um agente a mais e nega caps atingidos exatamente.
+_OCCUPANCY_EPSILON: float = 1e-9
+
 def agents_required(sla: float, service_time: int, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None, max_occupancy: float = None) -> int:
     """Determina o número de agentes necessários para atingir o SLA desejado.
 
@@ -60,7 +66,7 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
             else:
                 lo = mid + 1
         if max_occupancy is not None:
-            occupancy_floor: int = int(math.ceil(traffic_rate / max_occupancy))
+            occupancy_floor: int = int(math.ceil(traffic_rate / max_occupancy - _OCCUPANCY_EPSILON))
             return max(lo, occupancy_floor)
         return lo
     except Exception as e:
@@ -104,7 +110,7 @@ def is_within_occupancy(agents: int, calls_per_interval: float, aht: int, max_oc
     """
     if not (0 < max_occupancy <= 1):
         raise InputValidationError("max_occupancy deve estar no intervalo (0, 1].")
-    return occupancy(agents, calls_per_interval, aht, interval=interval) <= max_occupancy
+    return occupancy(agents, calls_per_interval, aht, interval=interval) <= max_occupancy + _OCCUPANCY_EPSILON
 
 
 def asa(agents: float, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:

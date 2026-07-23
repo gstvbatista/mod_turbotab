@@ -41,6 +41,12 @@ class AgentsRequiredMaxOccupancyTests(unittest.TestCase):
             agents_required(0.80, 20, 100, 180, patience=60, max_occupancy=0.85), 36
         )
 
+    def test_exact_boundary_does_not_over_ceil(self) -> None:
+        # A = 35.7 e 35.7/0.85 = 42 exato em decimal, mas o float dá
+        # 42.00000000000001: sem tolerância o ceil contrataria 43.
+        self.assertEqual(agents_required(0.80, 20, 36, 595), 42)
+        self.assertEqual(agents_required(0.80, 20, 36, 595, max_occupancy=0.85), 42)
+
     def test_zero_volume_with_cap(self) -> None:
         self.assertEqual(agents_required(0.80, 20, 0, 180, max_occupancy=0.85), 1)
 
@@ -86,6 +92,11 @@ class IsWithinOccupancyTests(unittest.TestCase):
     def test_boundary_is_inclusive(self) -> None:
         # A/N exatamente igual ao cap conta como dentro (<=).
         self.assertTrue(is_within_occupancy(10, 25, 180, 0.75))
+
+    def test_exact_boundary_survives_float_error(self) -> None:
+        # 35.7/42 vira 0.8500000000000001 em float; a tolerância evita
+        # negar um cap atingido exatamente.
+        self.assertTrue(is_within_occupancy(42, 36, 595, 0.85))
 
     def test_invalid_cap_raises(self) -> None:
         for bad in (0, -0.5, 1.5):

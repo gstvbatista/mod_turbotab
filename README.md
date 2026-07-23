@@ -244,6 +244,7 @@ Notation:
 | `C(N, A)` | Erlang C queueing probability |
 | `rho_max` | Optional occupancy cap (`max_occupancy`) |
 | `s` | Multi-skill sharing factor (`sharing_factor`) |
+| `S` | Shrinkage factor (`shrinkage`) |
 
 Core conversions:
 
@@ -311,6 +312,14 @@ N_k = \max\left(\left\lceil A_k \right\rceil + 1,\ \left\lceil s \cdot N_k^{C} \
 
 Skills served only by dedicated pools keep `N_k = N_k^{C}`, reproducing the single-skill result.
 
+Shrinkage (`scheduled_agents`, `agents_required_with_shrinkage`, Option A): the Erlang result counts agents **on the phones**; scheduling must also cover breaks, training, meetings, absenteeism and downtime. The standard workforce-management correction is applied post-calculation, leaving the core Erlang math unchanged:
+
+```math
+N_{\mathrm{scheduled}} = \left\lceil \frac{N_{\mathrm{phones}}}{1 - S} \right\rceil
+```
+
+`S` must be in `[0, 1)` and can be composed from individual components with `shrinkage_factor` (components are additive slices of paid time off the phones). With `S = 0` the result is the unchanged Erlang headcount.
+
 </details>
 
 <details>
@@ -324,6 +333,7 @@ The CLI is the primary interface, but the Python API remains available.
 | `calculations.traffic` | `traffic`, `looping_traffic` |
 | `calculations.multi_skill` | `agents_required_multi` |
 | `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity`, `occupancy`, `is_within_occupancy` |
+| `agents.shrinkage` | `scheduled_agents`, `shrinkage_factor`, `agents_required_with_shrinkage` |
 | `queues.queues` | `queued`, `queue_size`, `queue_time`, `service_time`, `sla_metric` |
 | `trunks.trunks` | `number_trunks`, `trunks_required` |
 | `utils` | `min_max`, `int_ceiling`, `secs` |
@@ -363,6 +373,30 @@ result = agents_required_multi(
 result["totals"]  # {"naive_total_hc": 22, "adjusted_total_hc": 20, "savings_hc": 2, ...}
 ```
 
+Shrinkage example — turning "agents on phones" into "agents to schedule":
+
+```python
+from mod_turbotab.agents.shrinkage import (
+    agents_required_with_shrinkage,
+    scheduled_agents,
+    shrinkage_factor,
+)
+
+factor = shrinkage_factor(breaks=0.07, training=0.04, absenteeism=0.08)  # 0.19
+
+# One call: Erlang C + shrinkage on top
+agents_required_with_shrinkage(
+    sla=0.80,
+    service_time=20,
+    calls_per_interval=25,
+    aht=180,
+    shrinkage=factor,
+)  # 14
+
+# Or compose manually from an existing headcount
+scheduled_agents(11, factor)  # 14
+```
+
 </details>
 
 <details>
@@ -394,4 +428,4 @@ except CalculationError:
 
 - `number_trunks()` uses a fixed blocking threshold of `0.001`.
 - Some zero-value edge cases still return wrapped calculation errors instead of purpose-built validation messages.
-- Shrinkage, absenteeism, and intraday simulation are tracked as future work — see issues labeled [`roadmap`](https://github.com/gstvbatista/mod_turbotab/issues?q=is%3Aissue+label%3Aroadmap).
+- Intraday simulation is tracked as future work — see issues labeled [`roadmap`](https://github.com/gstvbatista/mod_turbotab/issues?q=is%3Aissue+label%3Aroadmap).

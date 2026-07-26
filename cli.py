@@ -249,12 +249,14 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="agents_command", metavar="command")
 
+    _RAW_REQUIRED_HELP = (
+        "Calculate on-phone agents required for a target SLA (raw Erlang, "
+        "no shrinkage; use 'staffing required' for the planning chain)."
+    )
     required = commands.add_parser(
         "required",
-        help=(
-            "Calculate on-phone agents required for a target SLA (raw Erlang, "
-            "no shrinkage; use 'staffing required' for the planning chain)."
-        ),
+        help=_RAW_REQUIRED_HELP,
+        description=_RAW_REQUIRED_HELP,
     )
     _add_output_arg(required)
     _add_sla_arg(required)
@@ -300,13 +302,15 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_interval_arg(capacity)
     _set_handler(capacity, "agents.capacity", "calls_per_interval", "call_capacity", call_capacity)
 
+    _RAW_FRACTIONAL_HELP = (
+        "Calculate fractional on-phone agents required for a target SLA "
+        "(raw Erlang, no shrinkage; use 'staffing fractional-required' "
+        "for the planning chain)."
+    )
     fractional_required = commands.add_parser(
         "fractional-required",
-        help=(
-            "Calculate fractional on-phone agents required for a target SLA "
-            "(raw Erlang, no shrinkage; use 'staffing fractional-required' "
-            "for the planning chain)."
-        ),
+        help=_RAW_FRACTIONAL_HELP,
+        description=_RAW_FRACTIONAL_HELP,
     )
     _add_output_arg(fractional_required)
     _add_sla_arg(fractional_required)

@@ -39,8 +39,9 @@ class ScheduledAgentsTests(unittest.TestCase):
         self.assertEqual(scheduled_agents(3, 0.8), 15)
 
     def test_negative_agents_rejected(self) -> None:
-        with self.assertRaises(InputValidationError):
+        with self.assertRaises(InputValidationError) as ctx:
             scheduled_agents(-1, 0.3)
+        self.assertIn("agents_on_phone must be a finite value >= 0", str(ctx.exception))
 
     def test_non_finite_agents_rejected(self) -> None:
         for bad in (float("nan"), float("inf")):
@@ -49,8 +50,9 @@ class ScheduledAgentsTests(unittest.TestCase):
 
     def test_invalid_shrinkage_rejected(self) -> None:
         for bad in (-0.1, 1.0, 1.5, float("nan"), float("inf")):
-            with self.assertRaises(InputValidationError):
+            with self.assertRaises(InputValidationError) as ctx:
                 scheduled_agents(11, bad)
+            self.assertIn("Shrinkage must be in the range", str(ctx.exception))
 
 
 class ScheduledFractionalAgentsTests(unittest.TestCase):
@@ -96,8 +98,9 @@ class ShrinkageFactorTests(unittest.TestCase):
         self.assertEqual(shrinkage_factor(), 0.0)
 
     def test_negative_component_rejected(self) -> None:
-        with self.assertRaises(InputValidationError):
+        with self.assertRaises(InputValidationError) as ctx:
             shrinkage_factor(breaks=-0.05)
+        self.assertIn("Shrinkage component 'breaks' must be >= 0", str(ctx.exception))
 
     def test_total_reaching_one_rejected(self) -> None:
         with self.assertRaises(InputValidationError):

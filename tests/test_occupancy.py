@@ -52,8 +52,9 @@ class AgentsRequiredMaxOccupancyTests(unittest.TestCase):
 
     def test_invalid_cap_raises(self) -> None:
         for bad in (0, -0.1, 1.01, 2):
-            with self.assertRaises(InputValidationError):
+            with self.assertRaises(InputValidationError) as ctx:
                 agents_required(0.80, 20, 25, 180, max_occupancy=bad)
+            self.assertIn("max_occupancy must be in the range", str(ctx.exception))
 
 
 class OccupancyTests(unittest.TestCase):
@@ -67,8 +68,9 @@ class OccupancyTests(unittest.TestCase):
         )
 
     def test_invalid_inputs_raise(self) -> None:
-        with self.assertRaises(InputValidationError):
+        with self.assertRaises(InputValidationError) as ctx:
             occupancy(0, 25, 180)
+        self.assertIn("Invalid parameters for occupancy", str(ctx.exception))
         with self.assertRaises(InputValidationError):
             occupancy(11, -1, 180)
         with self.assertRaises(InputValidationError):

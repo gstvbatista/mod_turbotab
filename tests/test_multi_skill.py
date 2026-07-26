@@ -137,25 +137,29 @@ class SharingTests(unittest.TestCase):
 class ValidationTests(unittest.TestCase):
     def test_invalid_sharing_factor(self) -> None:
         for bad in (0, -0.5, 1.5):
-            with self.assertRaises(InputValidationError):
+            with self.assertRaises(InputValidationError) as ctx:
                 run(sharing_factor=bad)
+            self.assertIn("sharing_factor must be in (0, 1]", str(ctx.exception))
 
     def test_missing_skill_group_keys(self) -> None:
-        with self.assertRaises(InputValidationError):
+        with self.assertRaises(InputValidationError) as ctx:
             run(groups=[{"name": "billing", "aht": 180}])
+        self.assertIn("skill_group requires the keys", str(ctx.exception))
 
     def test_duplicate_skill_name(self) -> None:
-        with self.assertRaises(InputValidationError):
+        with self.assertRaises(InputValidationError) as ctx:
             run(
                 groups=[
                     {"name": "billing", "contacts_per_interval": 25, "aht": 180},
                     {"name": "billing", "contacts_per_interval": 10, "aht": 120},
                 ]
             )
+        self.assertIn("duplicate skill", str(ctx.exception))
 
     def test_pool_references_unknown_skill(self) -> None:
-        with self.assertRaises(InputValidationError):
+        with self.assertRaises(InputValidationError) as ctx:
             run(pools=[{"skills": ["retencao"], "count": 5}])
+        self.assertIn("pool references unknown skill", str(ctx.exception))
 
     def test_pool_with_empty_skills_or_negative_count(self) -> None:
         with self.assertRaises(InputValidationError):

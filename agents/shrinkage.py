@@ -23,6 +23,19 @@ from mod_turbotab.exceptions import InputValidationError
 _SHRINKAGE_EPSILON: float = 1e-9
 
 
+def _validate_agents_on_phone(agents_on_phone: float) -> None:
+    """Reject negative or non-finite on-phone headcounts.
+
+    NaN compares false to every bound, so a negative-only check would let
+    NaN (and inf) flow through and propagate into results and JSON output.
+    """
+    if not math.isfinite(agents_on_phone) or agents_on_phone < 0:
+        raise InputValidationError(
+            "agents_on_phone deve ser um valor finito >= 0. "
+            f"Recebido: {agents_on_phone}."
+        )
+
+
 def _validate_shrinkage(shrinkage: float) -> None:
     """Reject invalid shrinkage factors.
 
@@ -56,11 +69,7 @@ def scheduled_agents(agents_on_phone: int, shrinkage: float) -> int:
         InputValidationError: If ``shrinkage`` is outside ``[0.0, 1.0)`` or
             ``agents_on_phone`` is negative.
     """
-    if agents_on_phone < 0:
-        raise InputValidationError(
-            "agents_on_phone deve ser >= 0. "
-            f"Recebido: {agents_on_phone}."
-        )
+    _validate_agents_on_phone(agents_on_phone)
     _validate_shrinkage(shrinkage)
     if shrinkage == 0.0:
         return int(agents_on_phone)
@@ -88,11 +97,7 @@ def scheduled_fractional_agents(agents_on_phone: float, shrinkage: float) -> flo
         InputValidationError: If ``shrinkage`` is outside ``[0.0, 1.0)`` or
             ``agents_on_phone`` is negative.
     """
-    if agents_on_phone < 0:
-        raise InputValidationError(
-            "agents_on_phone deve ser >= 0. "
-            f"Recebido: {agents_on_phone}."
-        )
+    _validate_agents_on_phone(agents_on_phone)
     _validate_shrinkage(shrinkage)
     return float(agents_on_phone) / (1.0 - shrinkage)
 

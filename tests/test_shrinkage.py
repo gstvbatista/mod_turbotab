@@ -42,6 +42,11 @@ class ScheduledAgentsTests(unittest.TestCase):
         with self.assertRaises(InputValidationError):
             scheduled_agents(-1, 0.3)
 
+    def test_non_finite_agents_rejected(self) -> None:
+        for bad in (float("nan"), float("inf")):
+            with self.assertRaises(InputValidationError):
+                scheduled_agents(bad, 0.3)
+
     def test_invalid_shrinkage_rejected(self) -> None:
         for bad in (-0.1, 1.0, 1.5, float("nan"), float("inf")):
             with self.assertRaises(InputValidationError):
@@ -63,6 +68,11 @@ class ScheduledFractionalAgentsTests(unittest.TestCase):
     def test_negative_agents_rejected(self) -> None:
         with self.assertRaises(InputValidationError):
             scheduled_fractional_agents(-0.5, 0.3)
+
+    def test_non_finite_agents_rejected(self) -> None:
+        for bad in (float("nan"), float("inf")):
+            with self.assertRaises(InputValidationError):
+                scheduled_fractional_agents(bad, 0.3)
 
     def test_invalid_shrinkage_rejected(self) -> None:
         for bad in (-0.1, 1.0, 1.5, float("nan"), float("inf")):

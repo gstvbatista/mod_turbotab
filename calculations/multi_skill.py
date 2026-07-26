@@ -74,7 +74,7 @@ def agents_required_multi(
 
     Args:
         skill_groups (list[dict]): Lista de grupos de skill no formato
-            ``{"name": str, "calls_per_interval": float, "aht": int,
+            ``{"name": str, "contacts_per_interval": float, "aht": int,
             "priority": int (opcional)}``.
         agent_pools (list[dict]): Topologia de cross-skilling, cada item no
             formato ``{"skills": list[str], "count": int}``. Pools com mais de
@@ -135,18 +135,18 @@ def agents_required_multi(
 
     seen_names = set()
     for sg in skill_groups:
-        for key in ("name", "calls_per_interval", "aht"):
+        for key in ("name", "contacts_per_interval", "aht"):
             if key not in sg:
                 raise InputValidationError(
-                    f"skill_group requer as chaves: name, calls_per_interval, aht. "
+                    f"skill_group requer as chaves: name, contacts_per_interval, aht. "
                     f"Faltando: {key}."
                 )
         if sg["name"] in seen_names:
             raise InputValidationError(f"skill duplicado: {sg['name']}.")
         seen_names.add(sg["name"])
-        if sg["calls_per_interval"] < 0:
+        if sg["contacts_per_interval"] < 0:
             raise InputValidationError(
-                f"calls_per_interval inválido para '{sg['name']}'."
+                f"contacts_per_interval inválido para '{sg['name']}'."
             )
         if sg["aht"] <= 0:
             raise InputValidationError(
@@ -183,11 +183,11 @@ def agents_required_multi(
     per_skill: list = []
     for sg in skill_groups:
         name: str = sg["name"]
-        calls: float = float(sg["calls_per_interval"])
+        contacts: float = float(sg["contacts_per_interval"])
         aht: int = int(sg["aht"])
-        offered: float = calls * aht / interval
+        offered: float = contacts * aht / interval
 
-        if calls == 0:
+        if contacts == 0:
             # Skill sem volume previsto: demanda zero — sem o HC mínimo de 1
             # que agents_required retorna e sem exigir cobertura por pool.
             baseline_hc: int = 0
@@ -195,7 +195,7 @@ def agents_required_multi(
             baseline_hc = agents_required(
                 sla=sla,
                 service_time=service_time,
-                calls_per_interval=calls,
+                contacts_per_interval=contacts,
                 aht=aht,
                 interval=interval,
                 patience=patience,

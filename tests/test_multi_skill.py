@@ -14,8 +14,8 @@ from mod_turbotab.calculations.multi_skill import agents_required_multi
 from mod_turbotab.exceptions import InputValidationError
 
 GROUPS = [
-    {"name": "billing", "calls_per_interval": 25, "aht": 180},
-    {"name": "tech", "calls_per_interval": 20, "aht": 240},
+    {"name": "billing", "contacts_per_interval": 25, "aht": 180},
+    {"name": "tech", "contacts_per_interval": 20, "aht": 240},
 ]
 POOLS_CROSS = [
     {"skills": ["billing"], "count": 8},
@@ -100,7 +100,7 @@ class SharingTests(unittest.TestCase):
         # billing e tech (10 ajustados cada) só têm um pool compartilhado de
         # 10 agentes; capacidade agregada e por-skill "batem", mas 20 agentes
         # não saem de um pool de 10 — só o fluxo máximo pega este caso.
-        groups = GROUPS + [{"name": "retencao", "calls_per_interval": 25, "aht": 180}]
+        groups = GROUPS + [{"name": "retencao", "contacts_per_interval": 25, "aht": 180}]
         result = run(
             groups=groups,
             pools=[
@@ -125,7 +125,7 @@ class SharingTests(unittest.TestCase):
     def test_zero_volume_skill_is_zero_demand(self) -> None:
         # Skill sem volume não adiciona HC nem exige pool: totais e fit
         # ficam idênticos ao cenário sem ela.
-        groups = GROUPS + [{"name": "sazonal", "calls_per_interval": 0, "aht": 180}]
+        groups = GROUPS + [{"name": "sazonal", "contacts_per_interval": 0, "aht": 180}]
         result = run(groups=groups)
         sazonal = next(s for s in result["per_skill"] if s["name"] == "sazonal")
         self.assertEqual(sazonal["baseline_hc"], 0)
@@ -148,8 +148,8 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaises(InputValidationError):
             run(
                 groups=[
-                    {"name": "billing", "calls_per_interval": 25, "aht": 180},
-                    {"name": "billing", "calls_per_interval": 10, "aht": 120},
+                    {"name": "billing", "contacts_per_interval": 25, "aht": 180},
+                    {"name": "billing", "contacts_per_interval": 10, "aht": 120},
                 ]
             )
 
@@ -182,9 +182,9 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaises(InputValidationError):
             run(interval=0)
         with self.assertRaises(InputValidationError):
-            run(groups=[{"name": "billing", "calls_per_interval": -1, "aht": 180}])
+            run(groups=[{"name": "billing", "contacts_per_interval": -1, "aht": 180}])
         with self.assertRaises(InputValidationError):
-            run(groups=[{"name": "billing", "calls_per_interval": 25, "aht": 0}])
+            run(groups=[{"name": "billing", "contacts_per_interval": 25, "aht": 0}])
 
 
 if __name__ == "__main__":

@@ -6,27 +6,27 @@ import math
 from mod_turbotab.calculations.erlang import erlang_c, erlang_a
 from mod_turbotab.utils import secs, min_max
 from mod_turbotab.exceptions import CalculationError, InputValidationError
-def queued(agents: float, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
-    """Calcula o percentual de chamadas que ficarão enfileiradas.
+def queued(agents: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
+    """Calcula o percentual de contatos que ficarão enfileirados.
 
     Args:
         agents (float): Número de agentes.
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
 
     Returns:
-        float: Percentual de chamadas enfileiradas (entre 0 e 1).
+        float: Percentual de contatos enfileirados (entre 0 e 1).
 
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
     """
-    if agents < 0 or calls_per_interval < 0 or aht <= 0:
+    if agents < 0 or contacts_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para queued.")
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         if patience is not None:
@@ -37,13 +37,13 @@ def queued(agents: float, calls_per_interval: float, aht: int, interval: float =
     except Exception as e:
         raise CalculationError(f"Erro em queued: {str(e)}") from e
 
-def queue_size(agents: float, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
-    """Calcula o tamanho médio da fila (número de chamadas).
+def queue_size(agents: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
+    """Calcula o tamanho médio da fila (número de contatos).
 
     Args:
         agents (float): Número de agentes.
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
@@ -54,10 +54,10 @@ def queue_size(agents: float, calls_per_interval: float, aht: int, interval: flo
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
     """
-    if agents < 0 or calls_per_interval < 0 or aht <= 0:
+    if agents < 0 or contacts_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para queue_size.")
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         utilisation: float = traffic_rate / agents
@@ -75,13 +75,13 @@ def queue_size(agents: float, calls_per_interval: float, aht: int, interval: flo
     except Exception as e:
         raise CalculationError(f"Erro em queue_size: {str(e)}") from e
 
-def queue_time(agents: float, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
+def queue_time(agents: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
     """Calcula o tempo médio de espera na fila (em segundos).
 
     Args:
         agents (float): Número de agentes.
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
@@ -92,10 +92,10 @@ def queue_time(agents: float, calls_per_interval: float, aht: int, interval: flo
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
     """
-    if agents < 0 or calls_per_interval < 0 or aht <= 0:
+    if agents < 0 or contacts_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para queue_time.")
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         if patience is not None:
@@ -109,14 +109,14 @@ def queue_time(agents: float, calls_per_interval: float, aht: int, interval: flo
     except Exception as e:
         raise CalculationError(f"Erro em queue_time: {str(e)}") from e
 
-def service_time(agents: float, sla: float, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
-    """Calcula o tempo médio de espera para que uma dada porcentagem de chamadas seja atendida.
+def service_time(agents: float, sla: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
+    """Calcula o tempo médio de espera para que uma dada porcentagem de contatos seja atendida.
 
     Args:
         agents (float): Número de agentes.
         sla (float): SLA alvo (ex: 0.85).
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
@@ -128,10 +128,10 @@ def service_time(agents: float, sla: float, calls_per_interval: float, aht: int,
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if agents < 0 or sla < 0 or calls_per_interval < 0 or aht <= 0:
+    if agents < 0 or sla < 0 or contacts_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para service_time.")
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         if traffic_rate >= agents:
@@ -163,14 +163,14 @@ def service_time(agents: float, sla: float, calls_per_interval: float, aht: int,
     except Exception as e:
         raise CalculationError(f"Erro em service_time: {str(e)}") from e
 
-def sla_metric(agents: float, service_time_val: float, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
+def sla_metric(agents: float, service_time_val: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
     """Calcula o SLA alcançado para um número dado de agentes.
 
     Args:
         agents (float): Número de agentes.
         service_time_val (float): Tempo alvo de atendimento (em segundos).
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
@@ -182,10 +182,10 @@ def sla_metric(agents: float, service_time_val: float, calls_per_interval: float
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if agents < 0 or calls_per_interval < 0 or aht <= 0 or service_time_val < 0:
+    if agents < 0 or contacts_per_interval < 0 or aht <= 0 or service_time_val < 0:
         raise InputValidationError("Parâmetros inválidos para sla_metric.")
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         if patience is not None:

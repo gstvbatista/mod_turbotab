@@ -153,7 +153,7 @@ def shrinkage_factor(
 def agents_required_with_shrinkage(
     sla: float,
     service_time: int,
-    calls_per_interval: float,
+    contacts_per_interval: float,
     aht: int,
     shrinkage: float = 0.0,
     interval: float = 600.0,
@@ -169,7 +169,7 @@ def agents_required_with_shrinkage(
     Args:
         sla (float): Target service level (e.g. ``0.80`` for 80%).
         service_time (int): Target answer time in seconds.
-        calls_per_interval (float): Arrivals per planning interval.
+        contacts_per_interval (float): Arrivals per planning interval.
         aht (int): Average handle time in seconds.
         shrinkage (float, optional): Combined shrinkage in ``[0.0, 1.0)``.
             Defaults to ``0.0`` (no adjustment).
@@ -194,7 +194,7 @@ def agents_required_with_shrinkage(
     on_phone = agents_required(
         sla,
         service_time,
-        calls_per_interval,
+        contacts_per_interval,
         aht,
         interval=interval,
         patience=patience,

@@ -12,11 +12,11 @@ CLI-first TurboTable-style calculations for contact-center planning.
 `mod_turbotab` keeps the historical name known by call-center planning and traffic analysts, while exposing `turbotab` as the primary interface for humans, scripts, and AI agents.
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
+turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 25 --aht 180 --shrinkage 0.30 --json
 ```
 
 ```json
-{"calculation": "staffing.required", "inputs": {"aht": 180, "calls_per_interval": 25.0, "interval": 600.0, "service_time": 20, "shrinkage": 0.3, "sla": 0.8}, "result": {"name": "headcount", "unit": "agents", "value": {"productive_agents": 11, "scheduled_agents": 16}}, "schema_version": "2.0"}
+{"calculation": "staffing.required", "inputs": {"aht": 180, "contacts_per_interval": 25.0, "interval": 600.0, "service_time": 20, "shrinkage": 0.3, "sla": 0.8}, "result": {"name": "headcount", "unit": "agents", "value": {"productive_agents": 11, "scheduled_agents": 16}}, "schema_version": "2.1"}
 ```
 
 ## Why
@@ -31,7 +31,7 @@ turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 
 | How many trunks are required? | `turbotab telecom trunks ...` |
 | What is the Erlang B/C/A result? | `turbotab erlang ...` |
 
-It provides Erlang B, extended Erlang B, Engset B, Erlang C, Erlang A, queue metrics, staffing metrics, call capacity, and telephony trunk sizing with no third-party runtime dependencies.
+It provides Erlang B, extended Erlang B, Engset B, Erlang C, Erlang A, queue metrics, staffing metrics, contact capacity, and telephony trunk sizing with no third-party runtime dependencies.
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ Required staffing for 80% SLA in 20 seconds, with 30% shrinkage:
 turbotab staffing required \
   --sla 0.80 \
   --service-time 20 \
-  --calls-per-interval 25 \
+  --contacts-per-interval 25 \
   --aht 180 \
   --shrinkage 0.30 \
   --json
@@ -55,7 +55,7 @@ Achieved SLA for a fixed staffing level:
 turbotab sla achieved \
   --agents 11 \
   --service-time 20 \
-  --calls-per-interval 25 \
+  --contacts-per-interval 25 \
   --aht 180 \
   --json
 ```
@@ -65,7 +65,7 @@ Average queue wait:
 ```bash
 turbotab queue wait \
   --agents 11 \
-  --calls-per-interval 25 \
+  --contacts-per-interval 25 \
   --aht 180 \
   --json
 ```
@@ -75,7 +75,7 @@ Required trunks:
 ```bash
 turbotab telecom trunks \
   --agents 11 \
-  --calls-per-interval 25 \
+  --contacts-per-interval 25 \
   --aht 180 \
   --json
 ```
@@ -129,18 +129,18 @@ Use `--json` when calling from agents or automation. Invalid inputs exit non-zer
 Agents should prefer the CLI with `--json` instead of parsing text output or importing Python internals.
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
+turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 25 --aht 180 --shrinkage 0.30 --json
 ```
 
 JSON output is the stable agent contract:
 
 ```json
 {
-  "schema_version": "2.0",
+  "schema_version": "2.1",
   "calculation": "staffing.required",
   "inputs": {
     "aht": 180,
-    "calls_per_interval": 25.0,
+    "contacts_per_interval": 25.0,
     "interval": 600.0,
     "service_time": 20,
     "shrinkage": 0.3,
@@ -157,7 +157,7 @@ JSON output is the stable agent contract:
 }
 ```
 
-`staffing required` and `staffing fractional-required` emit the headcount chain under `schema_version` `2.0`; all other commands keep their single-value `1.0` payloads.
+`staffing required` and `staffing fractional-required` emit the headcount chain under `schema_version` `2.1`; commands whose inputs or result fields were renamed by the contacts terminology sweep use `1.1`; unaffected raw-formula commands (`erlang`, `traffic intensity`, `trunks number`) keep the original `1.0` payloads.
 
 The bundled skill lives at [`skills/mod-turbotab/SKILL.md`](skills/mod-turbotab/SKILL.md). It includes command recipes, unit rules, and agent guardrails.
 
@@ -168,11 +168,11 @@ The bundled skill lives at [`skills/mod-turbotab/SKILL.md`](skills/mod-turbotab/
 
 This project uses interval-based planning buckets.
 
-Every function or CLI command that accepts call volume uses `calls_per_interval`, not calls per hour by default.
+Every function or CLI command that accepts contact volume uses `contacts_per_interval`, not contacts per hour by default.
 
 | Parameter | Meaning |
 |---|---|
-| `calls_per_interval` / `--calls-per-interval` | Arrivals in the planning bucket |
+| `contacts_per_interval` / `--contacts-per-interval` | Arrivals in the planning bucket |
 | `interval` / `--interval` | Planning bucket in seconds |
 | Default `interval` | `600` seconds, or 10 minutes |
 | `aht` / `--aht` | Average handle time in seconds |
@@ -182,7 +182,7 @@ Every function or CLI command that accepts call volume uses `calls_per_interval`
 For hourly semantics, pass `--interval 3600`:
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 150 --aht 180 --interval 3600 --shrinkage 0 --json
+turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 150 --aht 180 --interval 3600 --shrinkage 0 --json
 ```
 
 Traffic intensity is computed as:
@@ -202,7 +202,7 @@ With the default 10-minute bucket:
 
 | Input | Value |
 |---|---|
-| Calls | `25` per 10 minutes |
+| Contacts | `25` per 10 minutes |
 | AHT | `180` seconds |
 | Target SLA | `0.80` |
 | Target answer time | `20` seconds |
@@ -211,10 +211,10 @@ With the default 10-minute bucket:
 CLI:
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
-turbotab sla achieved --agents 11 --service-time 20 --calls-per-interval 25 --aht 180 --json
-turbotab queue wait --agents 11 --calls-per-interval 25 --aht 180 --json
-turbotab telecom trunks --agents 11 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 25 --aht 180 --shrinkage 0.30 --json
+turbotab sla achieved --agents 11 --service-time 20 --contacts-per-interval 25 --aht 180 --json
+turbotab queue wait --agents 11 --contacts-per-interval 25 --aht 180 --json
+turbotab telecom trunks --agents 11 --contacts-per-interval 25 --aht 180 --json
 ```
 
 The queue metrics (`sla achieved`, `queue wait`, `telecom trunks`) take the **productive** agents — shrinkage covers who is off the phones, not queue behavior.
@@ -357,7 +357,7 @@ The CLI is the primary interface, but the Python API remains available.
 | `calculations.erlang` | `erlang_b`, `erlang_b_ext`, `engset_b`, `erlang_c`, `erlang_a` |
 | `calculations.traffic` | `traffic`, `looping_traffic` |
 | `calculations.multi_skill` | `agents_required_multi` |
-| `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity`, `occupancy`, `is_within_occupancy` |
+| `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `contact_capacity`, `fractional_agents`, `fractional_contact_capacity`, `occupancy`, `is_within_occupancy` |
 | `agents.shrinkage` | `scheduled_agents`, `scheduled_fractional_agents`, `shrinkage_factor`, `agents_required_with_shrinkage` |
 | `queues.queues` | `queued`, `queue_size`, `queue_time`, `service_time`, `sla_metric` |
 | `trunks.trunks` | `number_trunks`, `trunks_required` |
@@ -371,7 +371,7 @@ from mod_turbotab.agents.capacity import agents_required
 agents = agents_required(
     sla=0.80,
     service_time=20,
-    calls_per_interval=25,
+    contacts_per_interval=25,
     aht=180,
 )
 ```
@@ -383,8 +383,8 @@ from mod_turbotab.calculations.multi_skill import agents_required_multi
 
 result = agents_required_multi(
     skill_groups=[
-        {"name": "billing", "calls_per_interval": 25, "aht": 180},
-        {"name": "tech",    "calls_per_interval": 20, "aht": 240},
+        {"name": "billing", "contacts_per_interval": 25, "aht": 180},
+        {"name": "tech",    "contacts_per_interval": 20, "aht": 240},
     ],
     agent_pools=[
         {"skills": ["billing"],         "count": 8},
@@ -413,7 +413,7 @@ factor = shrinkage_factor(breaks=0.07, training=0.04, absenteeism=0.08)  # 0.19
 agents_required_with_shrinkage(
     sla=0.80,
     service_time=20,
-    calls_per_interval=25,
+    contacts_per_interval=25,
     aht=180,
     shrinkage=factor,
 )  # 14

@@ -13,7 +13,7 @@ Use the `turbotab` CLI with `--json` as the primary interface.
 
 ```bash
 turbotab --help
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
+turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 25 --aht 180 --shrinkage 0.30 --json
 ```
 
 If the package is not installed, install it from the repo checkout with `uv`:
@@ -32,7 +32,7 @@ python3 -m pip install -e .
 
 ## Unit Rules
 
-- `calls_per_interval` means arrivals in the configured planning bucket.
+- `contacts_per_interval` means arrivals in the configured planning bucket.
 - The default interval is `600` seconds, so default commands use 10-minute buckets.
 - For hourly volumes, pass `--interval 3600`.
 - `aht`, `service-time`, `patience`, and `interval` are seconds.
@@ -48,7 +48,7 @@ When the user asks for required staffing and has not given a shrinkage factor, a
 Required headcount (productive agents plus scheduled agents after shrinkage):
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
+turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 25 --aht 180 --shrinkage 0.30 --json
 # result.value: {"productive_agents": 11, "scheduled_agents": 16}
 ```
 
@@ -57,16 +57,16 @@ Downstream commands (`sla achieved`, `queue wait`, `telecom trunks`) take the **
 Achieved SLA:
 
 ```bash
-turbotab sla achieved --agents 11 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab sla achieved --agents 11 --service-time 20 --contacts-per-interval 25 --aht 180 --json
 ```
 
 Average queue wait:
 
 ```bash
-turbotab queue wait --agents 11 --calls-per-interval 25 --aht 180 --json
+turbotab queue wait --agents 11 --contacts-per-interval 25 --aht 180 --json
 ```
 
-Call capacity for a fixed staffing level:
+Contact capacity for a fixed staffing level:
 
 ```bash
 turbotab staffing capacity --agents 11 --sla 0.80 --service-time 20 --aht 180 --json
@@ -75,7 +75,7 @@ turbotab staffing capacity --agents 11 --sla 0.80 --service-time 20 --aht 180 --
 Trunks required:
 
 ```bash
-turbotab telecom trunks --agents 11 --calls-per-interval 25 --aht 180 --json
+turbotab telecom trunks --agents 11 --contacts-per-interval 25 --aht 180 --json
 ```
 
 Erlang B:
@@ -94,7 +94,7 @@ turbotab erlang a --servers 10 --intensity 8 --patience 60 --aht 180 --target-ti
 
 Parse the JSON object and report:
 
-- `schema_version`: output contract version (`2.0` for the staffing headcount chain, `1.0` elsewhere).
+- `schema_version`: output contract version (`2.1` for the staffing headcount chain, `1.1` for commands renamed by the contacts terminology sweep, `1.0` for unaffected raw-formula commands — `erlang`, `traffic intensity`, `trunks number`).
 - `calculation`: command family and metric.
 - `inputs`: normalized input values used by the calculation.
 - `result.name`: metric name.
@@ -108,5 +108,5 @@ Do not import Python internals when the CLI can answer the user request.
 
 - Explain assumptions when converting between hourly and interval volumes.
 - Do not present results as exact operational guarantees; these are queueing model estimates.
-- Mention Erlang A only when caller abandonment/patience is relevant or requested.
+- Mention Erlang A only when contact abandonment/patience is relevant or requested.
 - Do not change formulas or hard-coded thresholds from the CLI. If a threshold is not exposed, say it is not currently configurable.

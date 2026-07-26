@@ -13,9 +13,9 @@ from mod_turbotab.agents.capacity import (
     agents_asa,
     agents_required,
     asa,
-    call_capacity,
+    contact_capacity,
     fractional_agents,
-    fractional_call_capacity,
+    fractional_contact_capacity,
     nb_agents,
 )
 from mod_turbotab.agents.shrinkage import scheduled_agents, scheduled_fractional_agents
@@ -96,7 +96,7 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_output_arg(required)
     _add_sla_arg(required)
     _add_service_time_arg(required)
-    _add_calls_arg(required)
+    _add_contacts_arg(required)
     _add_aht_arg(required)
     _add_interval_arg(required)
     _add_patience_arg(required)
@@ -112,13 +112,13 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     asa_parser = commands.add_parser("asa", help="Calculate average speed of answer in seconds.")
     _add_output_arg(asa_parser)
     _add_agents_arg(asa_parser)
-    _add_calls_arg(asa_parser)
+    _add_contacts_arg(asa_parser)
     _add_aht_arg(asa_parser)
     _add_interval_arg(asa_parser)
     _add_patience_arg(asa_parser)
     _set_handler(asa_parser, "staffing.asa", "seconds", "asa", asa)
 
-    capacity = commands.add_parser("capacity", help="Calculate maximum calls for a staffed SLA target.")
+    capacity = commands.add_parser("capacity", help="Calculate maximum contacts for a staffed SLA target.")
     _add_output_arg(capacity)
     capacity.add_argument(
         "--agents",
@@ -131,7 +131,7 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_service_time_arg(capacity)
     _add_aht_arg(capacity)
     _add_interval_arg(capacity)
-    _set_handler(capacity, "staffing.capacity", "calls_per_interval", "call_capacity", call_capacity)
+    _set_handler(capacity, "staffing.capacity", "contacts_per_interval", "contact_capacity", contact_capacity)
 
     fractional_required = commands.add_parser(
         "fractional-required",
@@ -140,7 +140,7 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_output_arg(fractional_required)
     _add_sla_arg(fractional_required)
     _add_service_time_arg(fractional_required)
-    _add_calls_arg(fractional_required)
+    _add_contacts_arg(fractional_required)
     _add_aht_arg(fractional_required)
     _add_interval_arg(fractional_required)
     _add_patience_arg(fractional_required)
@@ -157,7 +157,7 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
 
     fractional_capacity = commands.add_parser(
         "fractional-capacity",
-        help="Calculate maximum calls for a fractional staffed SLA target.",
+        help="Calculate maximum contacts for a fractional staffed SLA target.",
     )
     _add_output_arg(fractional_capacity)
     fractional_capacity.add_argument(
@@ -174,9 +174,9 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _set_handler(
         fractional_capacity,
         "staffing.fractional_capacity",
-        "calls_per_interval",
-        "fractional_call_capacity",
-        fractional_call_capacity,
+        "contacts_per_interval",
+        "fractional_contact_capacity",
+        fractional_contact_capacity,
     )
 
 
@@ -189,7 +189,7 @@ def _add_sla_commands(categories: argparse._SubParsersAction[argparse.ArgumentPa
     _add_output_arg(achieved)
     _add_agents_arg(achieved)
     achieved.add_argument("--service-time", dest="service_time_val", type=float, required=True, help="Target answer time in seconds.")
-    _add_calls_arg(achieved)
+    _add_contacts_arg(achieved)
     _add_aht_arg(achieved)
     _add_interval_arg(achieved)
     _add_patience_arg(achieved)
@@ -199,7 +199,7 @@ def _add_sla_commands(categories: argparse._SubParsersAction[argparse.ArgumentPa
     _add_output_arg(target_time)
     _add_agents_arg(target_time)
     _add_sla_arg(target_time)
-    _add_calls_arg(target_time)
+    _add_contacts_arg(target_time)
     _add_aht_arg(target_time)
     _add_interval_arg(target_time)
     _add_patience_arg(target_time)
@@ -214,25 +214,25 @@ def _add_queue_commands(categories: argparse._SubParsersAction[argparse.Argument
     wait_parser = commands.add_parser("wait", help="Calculate average queue wait time in seconds.")
     _add_output_arg(wait_parser)
     _add_agents_arg(wait_parser)
-    _add_calls_arg(wait_parser)
+    _add_contacts_arg(wait_parser)
     _add_aht_arg(wait_parser)
     _add_interval_arg(wait_parser)
     _add_patience_arg(wait_parser)
     _set_handler(wait_parser, "queue.wait", "seconds", "queue_time", queue_time)
 
-    size_parser = commands.add_parser("size", help="Calculate average queue size in calls.")
+    size_parser = commands.add_parser("size", help="Calculate average queue size in contacts.")
     _add_output_arg(size_parser)
     _add_agents_arg(size_parser)
-    _add_calls_arg(size_parser)
+    _add_contacts_arg(size_parser)
     _add_aht_arg(size_parser)
     _add_interval_arg(size_parser)
     _add_patience_arg(size_parser)
-    _set_handler(size_parser, "queue.size", "calls", "queue_size", queue_size)
+    _set_handler(size_parser, "queue.size", "contacts", "queue_size", queue_size)
 
-    probability_parser = commands.add_parser("probability", help="Calculate probability that calls queue.")
+    probability_parser = commands.add_parser("probability", help="Calculate probability that contacts queue.")
     _add_output_arg(probability_parser)
     _add_agents_arg(probability_parser)
-    _add_calls_arg(probability_parser)
+    _add_contacts_arg(probability_parser)
     _add_aht_arg(probability_parser)
     _add_interval_arg(probability_parser)
     _add_patience_arg(probability_parser)
@@ -244,10 +244,10 @@ def _add_telecom_commands(categories: argparse._SubParsersAction[argparse.Argume
     parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="telecom_command", metavar="command")
 
-    trunks_parser = commands.add_parser("trunks", help="Calculate trunks required for call volume.")
+    trunks_parser = commands.add_parser("trunks", help="Calculate trunks required for contact volume.")
     _add_output_arg(trunks_parser)
     _add_agents_arg(trunks_parser)
-    _add_calls_arg(trunks_parser)
+    _add_contacts_arg(trunks_parser)
     _add_aht_arg(trunks_parser)
     _add_interval_arg(trunks_parser)
     _set_handler(trunks_parser, "telecom.trunks", "trunks", "trunks_required", trunks_required)
@@ -273,7 +273,7 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_output_arg(required)
     _add_sla_arg(required)
     _add_service_time_arg(required)
-    _add_calls_arg(required)
+    _add_contacts_arg(required)
     _add_aht_arg(required)
     _add_interval_arg(required)
     _add_patience_arg(required)
@@ -283,7 +283,7 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     asa_parser = commands.add_parser("asa", help="Calculate average speed of answer in seconds.")
     _add_output_arg(asa_parser)
     _add_agents_arg(asa_parser)
-    _add_calls_arg(asa_parser)
+    _add_contacts_arg(asa_parser)
     _add_aht_arg(asa_parser)
     _add_interval_arg(asa_parser)
     _add_patience_arg(asa_parser)
@@ -292,27 +292,27 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     asa_required = commands.add_parser("asa-required", help="Calculate agents required for a target ASA.")
     _add_output_arg(asa_required)
     asa_required.add_argument("--asa-target", type=float, required=True, help="Target ASA in seconds.")
-    _add_calls_arg(asa_required)
+    _add_contacts_arg(asa_required)
     _add_aht_arg(asa_required)
     _add_interval_arg(asa_required)
     _set_handler(asa_required, "agents.asa_required", "agents", "agents", agents_asa)
 
     nb_parser = commands.add_parser("nb-agents", help="Calculate agents required from average ASA and AHT.")
     _add_output_arg(nb_parser)
-    _add_calls_arg(nb_parser)
+    _add_contacts_arg(nb_parser)
     nb_parser.add_argument("--avg-sa", type=float, required=True, help="Average speed of answer in seconds.")
     nb_parser.add_argument("--avg-ht", type=int, required=True, help="Average handle time in seconds.")
     _add_interval_arg(nb_parser)
     _set_handler(nb_parser, "agents.nb_agents", "agents", "agents", nb_agents)
 
-    capacity = commands.add_parser("capacity", help="Calculate maximum calls for a staffed SLA target.")
+    capacity = commands.add_parser("capacity", help="Calculate maximum contacts for a staffed SLA target.")
     _add_output_arg(capacity)
     capacity.add_argument("--no-agents", type=float, required=True, help="Available agents.")
     _add_sla_arg(capacity)
     _add_service_time_arg(capacity)
     _add_aht_arg(capacity)
     _add_interval_arg(capacity)
-    _set_handler(capacity, "agents.capacity", "calls_per_interval", "call_capacity", call_capacity)
+    _set_handler(capacity, "agents.capacity", "contacts_per_interval", "contact_capacity", contact_capacity)
 
     _RAW_FRACTIONAL_HELP = (
         "Calculate fractional on-phone agents required for a target SLA "
@@ -327,7 +327,7 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_output_arg(fractional_required)
     _add_sla_arg(fractional_required)
     _add_service_time_arg(fractional_required)
-    _add_calls_arg(fractional_required)
+    _add_contacts_arg(fractional_required)
     _add_aht_arg(fractional_required)
     _add_interval_arg(fractional_required)
     _add_patience_arg(fractional_required)
@@ -341,7 +341,7 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
 
     fractional_capacity = commands.add_parser(
         "fractional-capacity",
-        help="Calculate maximum calls for a fractional staffed SLA target.",
+        help="Calculate maximum contacts for a fractional staffed SLA target.",
     )
     _add_output_arg(fractional_capacity)
     fractional_capacity.add_argument("--no-agents", type=float, required=True, help="Available fractional agents.")
@@ -352,9 +352,9 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _set_handler(
         fractional_capacity,
         "agents.fractional_capacity",
-        "calls_per_interval",
-        "fractional_call_capacity",
-        fractional_call_capacity,
+        "contacts_per_interval",
+        "fractional_contact_capacity",
+        fractional_contact_capacity,
     )
 
 
@@ -363,28 +363,28 @@ def _add_queues_commands(categories: argparse._SubParsersAction[argparse.Argumen
     parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="queues_command", metavar="command")
 
-    queued_parser = commands.add_parser("queued", help="Calculate percentage of calls that queue.")
+    queued_parser = commands.add_parser("queued", help="Calculate percentage of contacts that queue.")
     _add_output_arg(queued_parser)
     _add_agents_arg(queued_parser)
-    _add_calls_arg(queued_parser)
+    _add_contacts_arg(queued_parser)
     _add_aht_arg(queued_parser)
     _add_interval_arg(queued_parser)
     _add_patience_arg(queued_parser)
     _set_handler(queued_parser, "queues.queued", "ratio", "queued", queued)
 
-    size_parser = commands.add_parser("size", help="Calculate average queue size in calls.")
+    size_parser = commands.add_parser("size", help="Calculate average queue size in contacts.")
     _add_output_arg(size_parser)
     _add_agents_arg(size_parser)
-    _add_calls_arg(size_parser)
+    _add_contacts_arg(size_parser)
     _add_aht_arg(size_parser)
     _add_interval_arg(size_parser)
     _add_patience_arg(size_parser)
-    _set_handler(size_parser, "queues.size", "calls", "queue_size", queue_size)
+    _set_handler(size_parser, "queues.size", "contacts", "queue_size", queue_size)
 
     time_parser = commands.add_parser("time", help="Calculate average queue wait time in seconds.")
     _add_output_arg(time_parser)
     _add_agents_arg(time_parser)
-    _add_calls_arg(time_parser)
+    _add_contacts_arg(time_parser)
     _add_aht_arg(time_parser)
     _add_interval_arg(time_parser)
     _add_patience_arg(time_parser)
@@ -394,7 +394,7 @@ def _add_queues_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_output_arg(service_parser)
     _add_agents_arg(service_parser)
     _add_sla_arg(service_parser)
-    _add_calls_arg(service_parser)
+    _add_contacts_arg(service_parser)
     _add_aht_arg(service_parser)
     _add_interval_arg(service_parser)
     _add_patience_arg(service_parser)
@@ -404,7 +404,7 @@ def _add_queues_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_output_arg(sla_parser)
     _add_agents_arg(sla_parser)
     sla_parser.add_argument("--service-time", dest="service_time_val", type=float, required=True, help="Target answer time in seconds.")
-    _add_calls_arg(sla_parser)
+    _add_contacts_arg(sla_parser)
     _add_aht_arg(sla_parser)
     _add_interval_arg(sla_parser)
     _add_patience_arg(sla_parser)
@@ -420,20 +420,20 @@ def _add_erlang_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_output_arg(b_parser)
     _add_servers_arg(b_parser)
     _add_intensity_arg(b_parser)
-    _set_handler(b_parser, "erlang.b", "ratio", "blocking_probability", erlang_b)
+    _set_handler(b_parser, "erlang.b", "ratio", "blocking_probability", erlang_b, schema_version="1.0")
 
     b_ext_parser = commands.add_parser("b-ext", help="Calculate retry-aware extended Erlang B.")
     _add_output_arg(b_ext_parser)
     _add_servers_arg(b_ext_parser)
     _add_intensity_arg(b_ext_parser)
     b_ext_parser.add_argument("--retry", type=float, required=True, help="Retry ratio, for example 0.1 for 10%%.")
-    _set_handler(b_ext_parser, "erlang.b_ext", "ratio", "blocking_probability", erlang_b_ext)
+    _set_handler(b_ext_parser, "erlang.b_ext", "ratio", "blocking_probability", erlang_b_ext, schema_version="1.0")
 
     c_parser = commands.add_parser("c", help="Calculate Erlang C queueing probability.")
     _add_output_arg(c_parser)
     _add_servers_arg(c_parser)
     _add_intensity_arg(c_parser)
-    _set_handler(c_parser, "erlang.c", "ratio", "queue_probability", erlang_c)
+    _set_handler(c_parser, "erlang.c", "ratio", "queue_probability", erlang_c, schema_version="1.0")
 
     a_parser = commands.add_parser("a", help="Calculate Erlang A abandonment metrics.")
     _add_output_arg(a_parser)
@@ -449,7 +449,7 @@ def _add_erlang_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_servers_arg(engset_parser)
     engset_parser.add_argument("--events", type=float, required=True, help="Number of finite sources/events.")
     _add_intensity_arg(engset_parser)
-    _set_handler(engset_parser, "erlang.engset_b", "ratio", "blocking_probability", engset_b)
+    _set_handler(engset_parser, "erlang.engset_b", "ratio", "blocking_probability", engset_b, schema_version="1.0")
 
 
 def _add_traffic_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -461,7 +461,7 @@ def _add_traffic_commands(categories: argparse._SubParsersAction[argparse.Argume
     _add_output_arg(intensity_parser)
     _add_servers_arg(intensity_parser)
     intensity_parser.add_argument("--blocking", type=float, required=True, help="Target blocking probability.")
-    _set_handler(intensity_parser, "traffic.intensity", "erlangs", "traffic_intensity", traffic)
+    _set_handler(intensity_parser, "traffic.intensity", "erlangs", "traffic_intensity", traffic, schema_version="1.0")
 
 
 def _add_trunks_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -469,10 +469,10 @@ def _add_trunks_commands(categories: argparse._SubParsersAction[argparse.Argumen
     parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="trunks_command", metavar="command")
 
-    required_parser = commands.add_parser("required", help="Calculate trunks required for call volume.")
+    required_parser = commands.add_parser("required", help="Calculate trunks required for contact volume.")
     _add_output_arg(required_parser)
     _add_agents_arg(required_parser)
-    _add_calls_arg(required_parser)
+    _add_contacts_arg(required_parser)
     _add_aht_arg(required_parser)
     _add_interval_arg(required_parser)
     _set_handler(required_parser, "trunks.required", "trunks", "trunks_required", trunks_required)
@@ -481,7 +481,7 @@ def _add_trunks_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_output_arg(number_parser)
     _add_servers_arg(number_parser)
     _add_intensity_arg(number_parser)
-    _set_handler(number_parser, "trunks.number", "trunks", "number_trunks", number_trunks)
+    _set_handler(number_parser, "trunks.number", "trunks", "number_trunks", number_trunks, schema_version="1.0")
 
 
 def _add_output_arg(parser: argparse.ArgumentParser) -> None:
@@ -513,8 +513,8 @@ def _add_service_time_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--service-time", type=int, required=True, help="Target answer time in seconds.")
 
 
-def _add_calls_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--calls-per-interval", type=float, required=True, help="Arrival calls per planning interval.")
+def _add_contacts_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--contacts-per-interval", type=float, required=True, help="Arrival contacts per planning interval.")
 
 
 def _add_aht_arg(parser: argparse.ArgumentParser) -> None:
@@ -536,7 +536,7 @@ def _add_patience_arg(parser: argparse.ArgumentParser, required: bool = False) -
         type=float,
         default=None,
         required=required,
-        help="Average caller patience in seconds for Erlang A calculations.",
+        help="Average contact patience in seconds for Erlang A calculations.",
     )
 
 
@@ -568,9 +568,10 @@ def _set_handler(
     unit: str,
     result_name: str,
     func: Callable[..., Any],
+    schema_version: str = "1.1",
 ) -> None:
     parser.set_defaults(
-        handler=lambda args: _handle_function(args, calculation, unit, result_name, func),
+        handler=lambda args: _handle_function(args, calculation, unit, result_name, func, schema_version),
         calculation=calculation,
     )
 
@@ -581,10 +582,11 @@ def _handle_function(
     unit: str,
     result_name: str,
     func: Callable[..., Any],
+    schema_version: str = "1.1",
 ) -> dict[str, Any]:
     result = func(**_function_inputs(args))
     return {
-        "schema_version": "1.0",
+        "schema_version": schema_version,
         "calculation": calculation,
         "inputs": _public_inputs(args),
         "result": {
@@ -605,7 +607,7 @@ def _handle_headcount_chain(
     productive = required_func(**inputs)
     scheduled = scheduled_func(productive, args.shrinkage)
     return {
-        "schema_version": "2.0",
+        "schema_version": "2.1",
         "calculation": calculation,
         "inputs": _public_inputs(args),
         "result": {

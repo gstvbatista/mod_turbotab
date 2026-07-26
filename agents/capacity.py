@@ -12,14 +12,14 @@ from mod_turbotab.exceptions import CalculationError, InputValidationError
 # ceil contratar um agente a mais e nega caps atingidos exatamente.
 _OCCUPANCY_EPSILON: float = 1e-9
 
-def agents_required(sla: float, service_time: int, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None, max_occupancy: float = None) -> int:
+def agents_required(sla: float, service_time: int, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None, max_occupancy: float = None) -> int:
     """Determina o número de agentes necessários para atingir o SLA desejado.
 
     Args:
         sla (float): Percentual de atendimento esperado (ex: 0.95 para 95%).
         service_time (int): Tempo alvo de atendimento em segundos.
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
@@ -35,13 +35,13 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if sla < 0 or calls_per_interval < 0 or aht <= 0:
+    if sla < 0 or contacts_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para agents_required.")
     if max_occupancy is not None and not (0 < max_occupancy <= 1):
         raise InputValidationError("max_occupancy deve estar no intervalo (0, 1].")
     try:
         sla = min(sla, 1.0)
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
 
@@ -72,13 +72,13 @@ def agents_required(sla: float, service_time: int, calls_per_interval: float, ah
     except Exception as e:
         raise CalculationError(f"Erro em agents_required: {str(e)}") from e
 
-def occupancy(agents: int, calls_per_interval: float, aht: int, interval: float = 600.0) -> float:
+def occupancy(agents: int, contacts_per_interval: float, aht: int, interval: float = 600.0) -> float:
     """Calcula a ocupação atual (A/N) para um número de agentes.
 
     Args:
         agents (int): Número de agentes.
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
 
     Returns:
@@ -87,18 +87,18 @@ def occupancy(agents: int, calls_per_interval: float, aht: int, interval: float 
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
     """
-    if agents <= 0 or calls_per_interval < 0 or aht <= 0 or interval <= 0:
+    if agents <= 0 or contacts_per_interval < 0 or aht <= 0 or interval <= 0:
         raise InputValidationError("Parâmetros inválidos para occupancy.")
-    traffic_rate: float = calls_per_interval * aht / interval
+    traffic_rate: float = contacts_per_interval * aht / interval
     return traffic_rate / agents
 
-def is_within_occupancy(agents: int, calls_per_interval: float, aht: int, max_occupancy: float, interval: float = 600.0) -> bool:
+def is_within_occupancy(agents: int, contacts_per_interval: float, aht: int, max_occupancy: float, interval: float = 600.0) -> bool:
     """Verifica se a ocupação está dentro do limite informado.
 
     Args:
         agents (int): Número de agentes.
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         max_occupancy (float): Ocupação máxima tolerada (0 < x <= 1).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
 
@@ -110,16 +110,16 @@ def is_within_occupancy(agents: int, calls_per_interval: float, aht: int, max_oc
     """
     if not (0 < max_occupancy <= 1):
         raise InputValidationError("max_occupancy deve estar no intervalo (0, 1].")
-    return occupancy(agents, calls_per_interval, aht, interval=interval) <= max_occupancy + _OCCUPANCY_EPSILON
+    return occupancy(agents, contacts_per_interval, aht, interval=interval) <= max_occupancy + _OCCUPANCY_EPSILON
 
 
-def asa(agents: float, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
+def asa(agents: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
     """Calcula o Average Speed of Answer (ASA) para um dado número de agentes.
 
     Args:
         agents (float): Número de agentes.
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
@@ -131,10 +131,10 @@ def asa(agents: float, calls_per_interval: float, aht: int, interval: float = 60
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if agents <= 0 or calls_per_interval < 0 or aht <= 0:
+    if agents <= 0 or contacts_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para asa.")
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         if patience is not None:
@@ -149,13 +149,13 @@ def asa(agents: float, calls_per_interval: float, aht: int, interval: float = 60
     except Exception as e:
         raise CalculationError(f"Erro em asa: {str(e)}") from e
 
-def agents_asa(asa_target: float, calls_per_interval: float, aht: int, interval: float = 600.0) -> int:
+def agents_asa(asa_target: float, contacts_per_interval: float, aht: int, interval: float = 600.0) -> int:
     """Determina o número de agentes necessários para atingir o ASA alvo.
 
     Args:
         asa_target (float): ASA alvo (em segundos).
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
 
     Returns:
@@ -165,10 +165,10 @@ def agents_asa(asa_target: float, calls_per_interval: float, aht: int, interval:
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if asa_target < 0 or calls_per_interval < 0 or aht <= 0:
+    if asa_target < 0 or contacts_per_interval < 0 or aht <= 0:
         raise InputValidationError("Parâmetros inválidos para agents_asa.")
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
 
@@ -194,13 +194,13 @@ def agents_asa(asa_target: float, calls_per_interval: float, aht: int, interval:
     except Exception as e:
         raise CalculationError(f"Erro em agents_asa: {str(e)}") from e
 
-def nb_agents(calls_per_interval: float, avg_sa: float, avg_ht: int, interval: float = 600.0) -> int:
+def nb_agents(contacts_per_interval: float, avg_sa: float, avg_ht: int, interval: float = 600.0) -> int:
     """Calcula o número de agentes necessários com base no ASA médio.
 
     Args:
-        calls_per_interval (float): Chamadas por intervalo.
+        contacts_per_interval (float): Contatos por intervalo.
         avg_sa (float): ASA médio (em segundos).
-        avg_ht (int): Duração média da chamada (em segundos).
+        avg_ht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
 
     Returns:
@@ -210,21 +210,21 @@ def nb_agents(calls_per_interval: float, avg_sa: float, avg_ht: int, interval: f
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if calls_per_interval < 0 or avg_sa < 0 or avg_ht <= 0:
+    if contacts_per_interval < 0 or avg_sa < 0 or avg_ht <= 0:
         raise InputValidationError("Parâmetros inválidos para nb_agents.")
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / avg_ht
         traffic_rate: float = birth_rate / death_rate
         lo: int = max(1, int(math.ceil(traffic_rate)) + 1)
         hi: int = lo
-        while asa(float(hi), calls_per_interval, avg_ht, interval=interval) > avg_sa:
+        while asa(float(hi), contacts_per_interval, avg_ht, interval=interval) > avg_sa:
             hi *= 2
             if hi > 65535:
                 raise CalculationError("Não foi possível determinar o número de agentes com nb_agents.")
         while lo < hi:
             mid: int = (lo + hi) // 2
-            if asa(float(mid), calls_per_interval, avg_ht, interval=interval) <= avg_sa:
+            if asa(float(mid), contacts_per_interval, avg_ht, interval=interval) <= avg_sa:
                 hi = mid
             else:
                 lo = mid + 1
@@ -232,44 +232,44 @@ def nb_agents(calls_per_interval: float, avg_sa: float, avg_ht: int, interval: f
     except Exception as e:
         raise CalculationError(f"Erro em nb_agents: {str(e)}") from e
 
-def call_capacity(no_agents: float, sla: float, service_time: int, aht: int, interval: float = 600.0) -> float:
-    """Calcula o número máximo de chamadas que podem ser atendidas pelos agentes mantendo o SLA.
+def contact_capacity(no_agents: float, sla: float, service_time: int, aht: int, interval: float = 600.0) -> float:
+    """Calcula o número máximo de contatos que podem ser atendidos pelos agentes mantendo o SLA.
 
     Args:
         no_agents (float): Número de agentes disponíveis.
         sla (float): SLA alvo (ex: 0.85).
         service_time (int): Tempo alvo de atendimento (em segundos).
-        aht (int): Duração média da chamada (em segundos).
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
 
     Returns:
-        float: Número máximo de chamadas atendidas.
+        float: Número máximo de contatos atendidos.
 
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if no_agents < 0 or sla < 0 or service_time < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para call_capacity.")
+        raise InputValidationError("Parâmetros inválidos para contact_capacity.")
     try:
         x_no_agent: int = int(no_agents)
-        calls: int = int_ceiling(interval / aht) * x_no_agent
-        x_agent: int = agents_required(sla, service_time, calls, aht, interval=interval)
-        while x_agent > x_no_agent and calls > 0:
-            calls -= 1
-            x_agent = agents_required(sla, service_time, calls, aht, interval=interval)
-        return float(calls)
+        contacts: int = int_ceiling(interval / aht) * x_no_agent
+        x_agent: int = agents_required(sla, service_time, contacts, aht, interval=interval)
+        while x_agent > x_no_agent and contacts > 0:
+            contacts -= 1
+            x_agent = agents_required(sla, service_time, contacts, aht, interval=interval)
+        return float(contacts)
     except Exception as e:
-        raise CalculationError(f"Erro em call_capacity: {str(e)}") from e
+        raise CalculationError(f"Erro em contact_capacity: {str(e)}") from e
 
-def fractional_agents(sla: float, service_time: int, calls_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
+def fractional_agents(sla: float, service_time: int, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
     """Calcula o número fracionário de agentes necessários para atingir o SLA desejado.
 
     Args:
         sla (float): SLA alvo (ex: 0.95).
         service_time (int): Tempo alvo de atendimento (em segundos).
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
@@ -281,11 +281,11 @@ def fractional_agents(sla: float, service_time: int, calls_per_interval: float, 
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if sla < 0 or calls_per_interval < 0 or aht <= 0 or service_time < 0:
+    if sla < 0 or contacts_per_interval < 0 or aht <= 0 or service_time < 0:
         raise InputValidationError("Parâmetros inválidos para fractional_agents.")
     try:
         sla = min(sla, 1.0)
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
 
@@ -321,32 +321,32 @@ def fractional_agents(sla: float, service_time: int, calls_per_interval: float, 
     except Exception as e:
         raise CalculationError(f"Erro em fractional_agents: {str(e)}") from e
 
-def fractional_call_capacity(no_agents: float, sla: float, service_time: int, aht: int, interval: float = 600.0) -> float:
-    """Calcula o número máximo de chamadas que podem ser atendidas por um número fracionário de agentes mantendo o SLA.
+def fractional_contact_capacity(no_agents: float, sla: float, service_time: int, aht: int, interval: float = 600.0) -> float:
+    """Calcula o número máximo de contatos que podem ser atendidos por um número fracionário de agentes mantendo o SLA.
 
     Args:
         no_agents (float): Número fracionário de agentes disponíveis.
         sla (float): SLA alvo (ex: 0.85).
         service_time (int): Tempo alvo de atendimento (em segundos).
-        aht (int): Duração média da chamada (em segundos).
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
 
     Returns:
-        float: Número máximo de chamadas atendidas.
+        float: Número máximo de contatos atendidos.
 
     Raises:
         InputValidationError: Se os parâmetros forem inválidos.
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if no_agents < 0 or sla < 0 or service_time < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para fractional_call_capacity.")
+        raise InputValidationError("Parâmetros inválidos para fractional_contact_capacity.")
     try:
         x_no_agent: float = no_agents
-        calls: int = int_ceiling((interval / aht) * x_no_agent)
-        x_agent: float = fractional_agents(sla, service_time, calls, aht, interval=interval)
-        while x_agent > x_no_agent and calls > 0:
-            calls -= 1
-            x_agent = fractional_agents(sla, service_time, calls, aht, interval=interval)
-        return float(calls)
+        contacts: int = int_ceiling((interval / aht) * x_no_agent)
+        x_agent: float = fractional_agents(sla, service_time, contacts, aht, interval=interval)
+        while x_agent > x_no_agent and contacts > 0:
+            contacts -= 1
+            x_agent = fractional_agents(sla, service_time, contacts, aht, interval=interval)
+        return float(contacts)
     except Exception as e:
-        raise CalculationError(f"Erro em fractional_call_capacity: {str(e)}") from e
+        raise CalculationError(f"Erro em fractional_contact_capacity: {str(e)}") from e

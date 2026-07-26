@@ -242,11 +242,20 @@ def _add_telecom_commands(categories: argparse._SubParsersAction[argparse.Argume
 
 
 def _add_agents_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = categories.add_parser("agents", help="Detailed agent capacity calculations.")
+    parser = categories.add_parser(
+        "agents",
+        help="Detailed agent capacity calculations (raw formula results, no planning corrections).",
+    )
     parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="agents_command", metavar="command")
 
-    required = commands.add_parser("required", help="Calculate agents required for a target SLA.")
+    required = commands.add_parser(
+        "required",
+        help=(
+            "Calculate on-phone agents required for a target SLA (raw Erlang, "
+            "no shrinkage; use 'staffing required' for the planning chain)."
+        ),
+    )
     _add_output_arg(required)
     _add_sla_arg(required)
     _add_service_time_arg(required)
@@ -293,7 +302,11 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
 
     fractional_required = commands.add_parser(
         "fractional-required",
-        help="Calculate fractional agents required for a target SLA.",
+        help=(
+            "Calculate fractional on-phone agents required for a target SLA "
+            "(raw Erlang, no shrinkage; use 'staffing fractional-required' "
+            "for the planning chain)."
+        ),
     )
     _add_output_arg(fractional_required)
     _add_sla_arg(fractional_required)

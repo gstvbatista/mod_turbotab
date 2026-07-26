@@ -191,7 +191,11 @@ files are staged.
 - When a planning-relevant input (shrinkage, occupancy cap, patience, ...)
   exists in one surface but not another, flag the asymmetry: silent defaults
   on the missing surface produce answers that look authoritative but skip a
-  correction the user would have applied.
+  correction the user would have applied. Exception: the detailed
+  `agents`/`queues`/`erlang`/`traffic`/`trunks` categories are deliberately
+  raw-formula mirrors of the Python modules and do not grow planning flags —
+  for those, the check is that their help text states what they omit and
+  points to the intent-first command that carries the correction.
 - Check edge cases explicitly: zero/negative inputs, overloaded systems
   (utilisation >= 1), and Erlang A patience/abandonment behavior — these are
   the historical failure points in this kind of library.

@@ -233,8 +233,12 @@ Python API equivalent:
 
 ```python
 from mod_turbotab.agents.capacity import agents_required
+from mod_turbotab.agents.shrinkage import scheduled_agents
 
-print(agents_required(0.80, 20, 25, 180))
+productive = agents_required(0.80, 20, 25, 180)
+scheduled = scheduled_agents(productive, 0.30)
+
+print(productive, scheduled)  # 11 16
 ```
 
 </details>

@@ -120,7 +120,13 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
 
     capacity = commands.add_parser("capacity", help="Calculate maximum calls for a staffed SLA target.")
     _add_output_arg(capacity)
-    capacity.add_argument("--agents", dest="no_agents", type=float, required=True, help="Available agents.")
+    capacity.add_argument(
+        "--agents",
+        dest="no_agents",
+        type=float,
+        required=True,
+        help="Available productive (on-phone) agents, not shrinkage-inflated scheduled headcount.",
+    )
     _add_sla_arg(capacity)
     _add_service_time_arg(capacity)
     _add_aht_arg(capacity)
@@ -154,7 +160,13 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
         help="Calculate maximum calls for a fractional staffed SLA target.",
     )
     _add_output_arg(fractional_capacity)
-    fractional_capacity.add_argument("--agents", dest="no_agents", type=float, required=True, help="Available fractional agents.")
+    fractional_capacity.add_argument(
+        "--agents",
+        dest="no_agents",
+        type=float,
+        required=True,
+        help="Available fractional productive (on-phone) agents, not shrinkage-inflated scheduled headcount.",
+    )
     _add_sla_arg(fractional_capacity)
     _add_service_time_arg(fractional_capacity)
     _add_aht_arg(fractional_capacity)
@@ -477,7 +489,12 @@ def _add_output_arg(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_agents_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--agents", type=float, required=True, help="Number of agents.")
+    parser.add_argument(
+        "--agents",
+        type=float,
+        required=True,
+        help="Number of productive (on-phone) agents, not shrinkage-inflated scheduled headcount.",
+    )
 
 
 def _add_servers_arg(parser: argparse.ArgumentParser) -> None:

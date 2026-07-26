@@ -26,11 +26,13 @@ _SHRINKAGE_EPSILON: float = 1e-9
 def _validate_shrinkage(shrinkage: float) -> None:
     """Reject invalid shrinkage factors.
 
-    Shrinkage must be in ``[0.0, 1.0)``. A value of ``1.0`` would imply the
-    workforce is entirely unavailable (division by zero); negative values are
-    nonsensical.
+    Shrinkage must be a finite value in ``[0.0, 1.0)``. A value of ``1.0``
+    would imply the workforce is entirely unavailable (division by zero);
+    negative values are nonsensical. Non-finite values (NaN/inf) slip past
+    range checks — NaN compares false to everything — and would propagate
+    into results and produce invalid JSON output.
     """
-    if shrinkage < 0 or shrinkage >= 1.0:
+    if not math.isfinite(shrinkage) or shrinkage < 0 or shrinkage >= 1.0:
         raise InputValidationError(
             "Shrinkage deve estar no intervalo [0.0, 1.0). "
             f"Recebido: {shrinkage}."

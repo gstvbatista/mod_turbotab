@@ -116,24 +116,26 @@ class CliTests(unittest.TestCase):
         self.assertIn("--shrinkage", result.stderr)
 
     def test_staffing_required_invalid_shrinkage_exits_nonzero(self) -> None:
-        result = run_cli(
-            "staffing",
-            "required",
-            "--sla",
-            "0.80",
-            "--service-time",
-            "20",
-            "--calls-per-interval",
-            "25",
-            "--aht",
-            "180",
-            "--shrinkage",
-            "1.0",
-            "--json",
-        )
+        for bad in ("1.0", "nan", "inf"):
+            with self.subTest(shrinkage=bad):
+                result = run_cli(
+                    "staffing",
+                    "required",
+                    "--sla",
+                    "0.80",
+                    "--service-time",
+                    "20",
+                    "--calls-per-interval",
+                    "25",
+                    "--aht",
+                    "180",
+                    "--shrinkage",
+                    bad,
+                    "--json",
+                )
 
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("Shrinkage", result.stderr)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("Shrinkage", result.stderr)
 
     def test_staffing_fractional_required_headcount_chain_json(self) -> None:
         result = run_cli(

@@ -36,9 +36,9 @@ def agents_required(sla: float, service_time: int, contacts_per_interval: float,
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if sla < 0 or contacts_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para agents_required.")
+        raise InputValidationError("Invalid parameters for agents_required.")
     if max_occupancy is not None and not (0 < max_occupancy <= 1):
-        raise InputValidationError("max_occupancy deve estar no intervalo (0, 1].")
+        raise InputValidationError("max_occupancy must be in the range (0, 1].")
     try:
         sla = min(sla, 1.0)
         birth_rate: float = contacts_per_interval
@@ -70,7 +70,7 @@ def agents_required(sla: float, service_time: int, contacts_per_interval: float,
             return max(lo, occupancy_floor)
         return lo
     except Exception as e:
-        raise CalculationError(f"Erro em agents_required: {str(e)}") from e
+        raise CalculationError(f"Error in agents_required: {str(e)}") from e
 
 def occupancy(agents: int, contacts_per_interval: float, aht: int, interval: float = 600.0) -> float:
     """Calcula a ocupação atual (A/N) para um número de agentes.
@@ -88,7 +88,7 @@ def occupancy(agents: int, contacts_per_interval: float, aht: int, interval: flo
         InputValidationError: Se os parâmetros forem inválidos.
     """
     if agents <= 0 or contacts_per_interval < 0 or aht <= 0 or interval <= 0:
-        raise InputValidationError("Parâmetros inválidos para occupancy.")
+        raise InputValidationError("Invalid parameters for occupancy.")
     traffic_rate: float = contacts_per_interval * aht / interval
     return traffic_rate / agents
 
@@ -109,7 +109,7 @@ def is_within_occupancy(agents: int, contacts_per_interval: float, aht: int, max
         InputValidationError: Se os parâmetros forem inválidos.
     """
     if not (0 < max_occupancy <= 1):
-        raise InputValidationError("max_occupancy deve estar no intervalo (0, 1].")
+        raise InputValidationError("max_occupancy must be in the range (0, 1].")
     return occupancy(agents, contacts_per_interval, aht, interval=interval) <= max_occupancy + _OCCUPANCY_EPSILON
 
 
@@ -132,7 +132,7 @@ def asa(agents: float, contacts_per_interval: float, aht: int, interval: float =
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if agents <= 0 or contacts_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para asa.")
+        raise InputValidationError("Invalid parameters for asa.")
     try:
         birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
@@ -147,7 +147,7 @@ def asa(agents: float, contacts_per_interval: float, aht: int, interval: float =
         answer_time: float = c / (agents * death_rate * (1 - utilisation))
         return secs(answer_time)
     except Exception as e:
-        raise CalculationError(f"Erro em asa: {str(e)}") from e
+        raise CalculationError(f"Error in asa: {str(e)}") from e
 
 def agents_asa(asa_target: float, contacts_per_interval: float, aht: int, interval: float = 600.0) -> int:
     """Determina o número de agentes necessários para atingir o ASA alvo.
@@ -166,7 +166,7 @@ def agents_asa(asa_target: float, contacts_per_interval: float, aht: int, interv
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if asa_target < 0 or contacts_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para agents_asa.")
+        raise InputValidationError("Invalid parameters for agents_asa.")
     try:
         birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
@@ -192,7 +192,7 @@ def agents_asa(asa_target: float, contacts_per_interval: float, aht: int, interv
                 lo = mid + 1
         return lo
     except Exception as e:
-        raise CalculationError(f"Erro em agents_asa: {str(e)}") from e
+        raise CalculationError(f"Error in agents_asa: {str(e)}") from e
 
 def nb_agents(contacts_per_interval: float, avg_sa: float, avg_ht: int, interval: float = 600.0) -> int:
     """Calcula o número de agentes necessários com base no ASA médio.
@@ -211,7 +211,7 @@ def nb_agents(contacts_per_interval: float, avg_sa: float, avg_ht: int, interval
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if contacts_per_interval < 0 or avg_sa < 0 or avg_ht <= 0:
-        raise InputValidationError("Parâmetros inválidos para nb_agents.")
+        raise InputValidationError("Invalid parameters for nb_agents.")
     try:
         birth_rate: float = contacts_per_interval
         death_rate: float = interval / avg_ht
@@ -221,7 +221,7 @@ def nb_agents(contacts_per_interval: float, avg_sa: float, avg_ht: int, interval
         while asa(float(hi), contacts_per_interval, avg_ht, interval=interval) > avg_sa:
             hi *= 2
             if hi > 65535:
-                raise CalculationError("Não foi possível determinar o número de agentes com nb_agents.")
+                raise CalculationError("Could not determine the number of agents with nb_agents.")
         while lo < hi:
             mid: int = (lo + hi) // 2
             if asa(float(mid), contacts_per_interval, avg_ht, interval=interval) <= avg_sa:
@@ -230,7 +230,7 @@ def nb_agents(contacts_per_interval: float, avg_sa: float, avg_ht: int, interval
                 lo = mid + 1
         return lo
     except Exception as e:
-        raise CalculationError(f"Erro em nb_agents: {str(e)}") from e
+        raise CalculationError(f"Error in nb_agents: {str(e)}") from e
 
 def contact_capacity(no_agents: float, sla: float, service_time: int, aht: int, interval: float = 600.0) -> float:
     """Calcula o número máximo de contatos que podem ser atendidos pelos agentes mantendo o SLA.
@@ -250,7 +250,7 @@ def contact_capacity(no_agents: float, sla: float, service_time: int, aht: int, 
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if no_agents < 0 or sla < 0 or service_time < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para contact_capacity.")
+        raise InputValidationError("Invalid parameters for contact_capacity.")
     try:
         x_no_agent: int = int(no_agents)
         contacts: int = int_ceiling(interval / aht) * x_no_agent
@@ -260,7 +260,7 @@ def contact_capacity(no_agents: float, sla: float, service_time: int, aht: int, 
             x_agent = agents_required(sla, service_time, contacts, aht, interval=interval)
         return float(contacts)
     except Exception as e:
-        raise CalculationError(f"Erro em contact_capacity: {str(e)}") from e
+        raise CalculationError(f"Error in contact_capacity: {str(e)}") from e
 
 def fractional_agents(sla: float, service_time: int, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
     """Calcula o número fracionário de agentes necessários para atingir o SLA desejado.
@@ -282,7 +282,7 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if sla < 0 or contacts_per_interval < 0 or aht <= 0 or service_time < 0:
-        raise InputValidationError("Parâmetros inválidos para fractional_agents.")
+        raise InputValidationError("Invalid parameters for fractional_agents.")
     try:
         sla = min(sla, 1.0)
         birth_rate: float = contacts_per_interval
@@ -319,7 +319,7 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
             no_agents_sng = (fract / one_agent_effect) + (no_agents - 1)
         return no_agents_sng
     except Exception as e:
-        raise CalculationError(f"Erro em fractional_agents: {str(e)}") from e
+        raise CalculationError(f"Error in fractional_agents: {str(e)}") from e
 
 def fractional_contact_capacity(no_agents: float, sla: float, service_time: int, aht: int, interval: float = 600.0) -> float:
     """Calcula o número máximo de contatos que podem ser atendidos por um número fracionário de agentes mantendo o SLA.
@@ -339,7 +339,7 @@ def fractional_contact_capacity(no_agents: float, sla: float, service_time: int,
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if no_agents < 0 or sla < 0 or service_time < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para fractional_contact_capacity.")
+        raise InputValidationError("Invalid parameters for fractional_contact_capacity.")
     try:
         x_no_agent: float = no_agents
         contacts: int = int_ceiling((interval / aht) * x_no_agent)
@@ -349,4 +349,4 @@ def fractional_contact_capacity(no_agents: float, sla: float, service_time: int,
             x_agent = fractional_agents(sla, service_time, contacts, aht, interval=interval)
         return float(contacts)
     except Exception as e:
-        raise CalculationError(f"Erro em fractional_contact_capacity: {str(e)}") from e
+        raise CalculationError(f"Error in fractional_contact_capacity: {str(e)}") from e

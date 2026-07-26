@@ -1,15 +1,14 @@
 """
-Shrinkage and absenteeism adjustments for workforce scheduling.
+Ajustes de shrinkage e absenteísmo para o dimensionamento de escala.
 
-Erlang C calculates the number of agents needed **on the phones**. Shrinkage
-bridges the gap between "agents on phones" and "agents to schedule" by
-applying the standard workforce-management correction:
+Erlang C calcula o número de agentes necessários **ao telefone**. O shrinkage
+cobre a diferença entre "agentes ao telefone" e "agentes para escalar",
+aplicando a correção padrão de workforce management:
 
-    HC_scheduled = HC_required / (1 - shrinkage)
+    HC_escalado = HC_requerido / (1 - shrinkage)
 
-This module implements **Option A** (post-calculation adjustment) from the
-spec in issue #17: the core Erlang math is unchanged; shrinkage is layered
-on top.
+Este módulo implementa a **Opção A** (ajuste pós-cálculo) do spec da issue
+#17: a matemática Erlang principal não muda; o shrinkage é aplicado por cima.
 """
 
 import math
@@ -24,50 +23,52 @@ _SHRINKAGE_EPSILON: float = 1e-9
 
 
 def _validate_agents_on_phone(agents_on_phone: float) -> None:
-    """Reject negative or non-finite on-phone headcounts.
+    """Rejeita headcounts ao telefone negativos ou não-finitos.
 
-    NaN compares false to every bound, so a negative-only check would let
-    NaN (and inf) flow through and propagate into results and JSON output.
+    NaN compara falso com qualquer limite, então uma checagem apenas de
+    negativo deixaria NaN (e inf) passarem e se propagarem para os
+    resultados e para a saída JSON.
     """
     if not math.isfinite(agents_on_phone) or agents_on_phone < 0:
         raise InputValidationError(
-            "agents_on_phone deve ser um valor finito >= 0. "
-            f"Recebido: {agents_on_phone}."
+            "agents_on_phone must be a finite value >= 0. "
+            f"Received: {agents_on_phone}."
         )
 
 
 def _validate_shrinkage(shrinkage: float) -> None:
-    """Reject invalid shrinkage factors.
+    """Rejeita fatores de shrinkage inválidos.
 
-    Shrinkage must be a finite value in ``[0.0, 1.0)``. A value of ``1.0``
-    would imply the workforce is entirely unavailable (division by zero);
-    negative values are nonsensical. Non-finite values (NaN/inf) slip past
-    range checks — NaN compares false to everything — and would propagate
-    into results and produce invalid JSON output.
+    Shrinkage deve ser um valor finito em ``[0.0, 1.0)``. Um valor de
+    ``1.0`` implicaria que a força de trabalho está inteiramente
+    indisponível (divisão por zero); valores negativos não fazem sentido.
+    Valores não-finitos (NaN/inf) escapam das checagens de intervalo — NaN
+    compara falso com tudo — e se propagariam para os resultados,
+    produzindo saída JSON inválida.
     """
     if not math.isfinite(shrinkage) or shrinkage < 0 or shrinkage >= 1.0:
         raise InputValidationError(
-            "Shrinkage deve estar no intervalo [0.0, 1.0). "
-            f"Recebido: {shrinkage}."
+            "Shrinkage must be in the range [0.0, 1.0). "
+            f"Received: {shrinkage}."
         )
 
 
 def scheduled_agents(agents_on_phone: int, shrinkage: float) -> int:
-    """Inflate ``agents_on_phone`` by the shrinkage factor.
+    """Infla ``agents_on_phone`` pelo fator de shrinkage.
 
     Args:
-        agents_on_phone (int): Number of agents required on the phones
-            (e.g. the output of :func:`agents_required`).
-        shrinkage (float): Fraction of paid time unavailable for handling
-            calls, in ``[0.0, 1.0)``. ``0.0`` returns ``agents_on_phone``
-            unchanged.
+        agents_on_phone (int): Número de agentes necessários ao telefone
+            (ex.: a saída de :func:`agents_required`).
+        shrinkage (float): Fração do tempo pago indisponível para atender
+            chamadas, em ``[0.0, 1.0)``. ``0.0`` retorna ``agents_on_phone``
+            sem alteração.
 
     Returns:
-        int: Headcount to schedule, rounded up.
+        int: Headcount a escalar, arredondado para cima.
 
     Raises:
-        InputValidationError: If ``shrinkage`` is outside ``[0.0, 1.0)`` or
-            ``agents_on_phone`` is negative.
+        InputValidationError: Se ``shrinkage`` estiver fora de
+            ``[0.0, 1.0)`` ou ``agents_on_phone`` for negativo.
     """
     _validate_agents_on_phone(agents_on_phone)
     _validate_shrinkage(shrinkage)
@@ -77,25 +78,25 @@ def scheduled_agents(agents_on_phone: int, shrinkage: float) -> int:
 
 
 def scheduled_fractional_agents(agents_on_phone: float, shrinkage: float) -> float:
-    """Inflate a fractional headcount by the shrinkage factor, unrounded.
+    """Infla um headcount fracionário pelo fator de shrinkage, sem arredondar.
 
-    Fractional counterpart of :func:`scheduled_agents` for workflows built
-    on :func:`fractional_agents`, where the whole chain stays fractional and
-    any rounding is left to the caller.
+    Contraparte fracionária de :func:`scheduled_agents` para fluxos
+    construídos sobre :func:`fractional_agents`, onde toda a cadeia
+    permanece fracionária e o arredondamento fica a cargo de quem chama.
 
     Args:
-        agents_on_phone (float): Fractional agents required on the phones
-            (e.g. the output of :func:`fractional_agents`).
-        shrinkage (float): Fraction of paid time unavailable for handling
-            calls, in ``[0.0, 1.0)``. ``0.0`` returns ``agents_on_phone``
-            unchanged.
+        agents_on_phone (float): Agentes fracionários necessários ao
+            telefone (ex.: a saída de :func:`fractional_agents`).
+        shrinkage (float): Fração do tempo pago indisponível para atender
+            chamadas, em ``[0.0, 1.0)``. ``0.0`` retorna ``agents_on_phone``
+            sem alteração.
 
     Returns:
-        float: Fractional headcount to schedule, without rounding.
+        float: Headcount fracionário a escalar, sem arredondamento.
 
     Raises:
-        InputValidationError: If ``shrinkage`` is outside ``[0.0, 1.0)`` or
-            ``agents_on_phone`` is negative.
+        InputValidationError: Se ``shrinkage`` estiver fora de
+            ``[0.0, 1.0)`` ou ``agents_on_phone`` for negativo.
     """
     _validate_agents_on_phone(agents_on_phone)
     _validate_shrinkage(shrinkage)
@@ -110,26 +111,27 @@ def shrinkage_factor(
     system_downtime: float = 0.0,
     other: float = 0.0,
 ) -> float:
-    """Combine individual shrinkage components into a single factor.
+    """Combina componentes individuais de shrinkage em um único fator.
 
-    Components are additive — they represent disjoint slices of paid time
-    spent off the phones. Each component must be in ``[0.0, 1.0)`` and the
-    sum must remain strictly below ``1.0``.
+    Os componentes são aditivos — representam fatias disjuntas do tempo
+    pago fora do telefone. Cada componente deve estar em ``[0.0, 1.0)`` e a
+    soma deve permanecer estritamente abaixo de ``1.0``.
 
     Args:
-        breaks (float): Paid breaks.
-        training (float): Training time.
-        meetings (float): Team meetings, one-on-ones, etc.
-        absenteeism (float): Unplanned absences.
-        system_downtime (float): Time lost to system/tooling outages.
-        other (float): Any additional component not listed above.
+        breaks (float): Pausas remuneradas.
+        training (float): Tempo de treinamento.
+        meetings (float): Reuniões de equipe, 1:1s, etc.
+        absenteeism (float): Ausências não planejadas.
+        system_downtime (float): Tempo perdido por indisponibilidade de
+            sistema/ferramentas.
+        other (float): Qualquer componente adicional não listado acima.
 
     Returns:
-        float: Combined shrinkage in ``[0.0, 1.0)``.
+        float: Shrinkage combinado em ``[0.0, 1.0)``.
 
     Raises:
-        InputValidationError: If any component is negative or the total
-            reaches ``1.0``.
+        InputValidationError: Se algum componente for negativo ou o total
+            atingir ``1.0``.
     """
     components = {
         "breaks": breaks,
@@ -142,8 +144,8 @@ def shrinkage_factor(
     for name, value in components.items():
         if value < 0:
             raise InputValidationError(
-                f"Componente de shrinkage '{name}' deve ser >= 0. "
-                f"Recebido: {value}."
+                f"Shrinkage component '{name}' must be >= 0. "
+                f"Received: {value}."
             )
     total = sum(components.values())
     _validate_shrinkage(total)
@@ -160,35 +162,37 @@ def agents_required_with_shrinkage(
     patience: float = None,
     max_occupancy: float = None,
 ) -> int:
-    """Compute scheduled headcount, applying shrinkage to Erlang C output.
+    """Calcula o headcount escalado, aplicando shrinkage sobre a saída Erlang C.
 
-    This is :func:`agents_required` followed by :func:`scheduled_agents`.
-    With ``shrinkage=0.0`` (the default) the result is identical to
+    Equivale a :func:`agents_required` seguido de :func:`scheduled_agents`.
+    Com ``shrinkage=0.0`` (padrão) o resultado é idêntico a
     ``agents_required(...)``.
 
     Args:
-        sla (float): Target service level (e.g. ``0.80`` for 80%).
-        service_time (int): Target answer time in seconds.
-        contacts_per_interval (float): Arrivals per planning interval.
-        aht (int): Average handle time in seconds.
-        shrinkage (float, optional): Combined shrinkage in ``[0.0, 1.0)``.
-            Defaults to ``0.0`` (no adjustment).
-        interval (float, optional): Planning interval in seconds.
-            Defaults to ``600`` (10 minutes), matching the rest of the
-            library.
-        patience (float, optional): Average patience for Erlang A. ``None``
-            uses pure Erlang C.
-        max_occupancy (float, optional): Maximum tolerated occupancy per
-            agent, forwarded to :func:`agents_required`. ``None`` skips the
-            occupancy cap.
+        sla (float): Nível de serviço alvo (ex.: ``0.80`` para 80%).
+        service_time (int): Tempo alvo de atendimento, em segundos.
+        contacts_per_interval (float): Chegadas por intervalo de
+            planejamento.
+        aht (int): Duração média do contato, em segundos.
+        shrinkage (float, optional): Shrinkage combinado em ``[0.0, 1.0)``.
+            Padrão ``0.0`` (sem ajuste).
+        interval (float, optional): Intervalo de planejamento em segundos.
+            Padrão ``600`` (10 minutos), consistente com o resto da
+            biblioteca.
+        patience (float, optional): Paciência média para Erlang A. ``None``
+            usa Erlang C puro.
+        max_occupancy (float, optional): Ocupação máxima tolerada por
+            agente, repassada a :func:`agents_required`. ``None`` desativa
+            o teto de ocupação.
 
     Returns:
-        int: Number of agents to schedule.
+        int: Número de agentes a escalar.
 
     Raises:
-        InputValidationError: If ``shrinkage`` is invalid or any of the
-            underlying parameters fail validation in :func:`agents_required`.
-        CalculationError: If the underlying Erlang calculation fails.
+        InputValidationError: Se ``shrinkage`` for inválido ou algum dos
+            parâmetros subjacentes falhar na validação de
+            :func:`agents_required`.
+        CalculationError: Se o cálculo Erlang subjacente falhar.
     """
     _validate_shrinkage(shrinkage)
     on_phone = agents_required(

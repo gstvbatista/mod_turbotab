@@ -1,1 +1,1 @@
-"""Tests for mod_turbotab."""
+"""Testes do mod_turbotab."""

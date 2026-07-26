@@ -1,4 +1,4 @@
-"""Command-line interface for mod_turbotab."""
+"""Interface de linha de comando do mod_turbotab."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ DEFAULT_INTERVAL = 600.0
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the turbotab command-line interface."""
+    """Executa a interface de linha de comando do turbotab."""
     parser = build_parser()
     args = parser.parse_args(argv)
 

@@ -149,6 +149,19 @@ create an issue from that template.
   in English.
 - Avoid broad refactors when fixing formulas. Make the smallest change that
   can be validated.
+
+### Language convention
+
+- **Anything that reaches the user at runtime** — `InputValidationError`/
+  `CalculationError` messages, `print()` output, argparse `help=`/
+  `description=` text, `--version` strings — is **English**. These strings
+  hit CLI stderr or the `--json` error payload directly, so they're
+  user-facing output, not internal documentation.
+- **Anything that's a comment for the next reader of the source** —
+  docstrings, inline `#` comments — is **pt-br**.
+- Code identifiers (function/variable/parameter names) are unaffected — they
+  stay in English regardless of which side of the split they sit on.
+- See issue #39 for the audit that established this split.
 - README style: deep-dive content goes inside the existing `<details>`
   blocks (Mathematical model, API reference, ...), not as new top-level
   sections. Formulas belong in the Mathematical model block as ```math
@@ -221,3 +234,9 @@ files are staged.
   recipe silently teaches them the old surface.
 - Flag any new third-party import — this project intentionally has zero
   runtime dependencies. Conversely, do not flag missing dependency pinning.
+- Flag any new or changed `InputValidationError`/`CalculationError` message,
+  `print()` output, or argparse `help=`/`description=` text written in
+  pt-br, and any new or changed docstring or inline `#` comment written in
+  English — see the Language convention in Code style. This drifted
+  unnoticed for a long time before issue #39 caught it; catching it in
+  review is cheaper than a repo-wide re-audit later.

@@ -24,7 +24,7 @@ def number_trunks(servers: float, intensity: float) -> int:
         CalculationError: Se não for possível determinar um valor adequado dentro dos limites.
     """
     if servers < 0 or intensity < 0:
-        raise InputValidationError("Os valores de 'servers' e 'intensity' devem ser não negativos.")
+        raise InputValidationError("The 'servers' and 'intensity' values must be non-negative.")
     
     max_iterate: int = 65535
     try:
@@ -33,9 +33,9 @@ def number_trunks(servers: float, intensity: float) -> int:
             b: float = erlang_b(float(count), intensity)
             if b < 0.001:
                 return count
-        raise CalculationError("Não foi possível determinar um número adequado de trunks dentro do limite máximo.")
+        raise CalculationError("Could not determine an adequate number of trunks within the maximum limit.")
     except Exception as e:
-        raise CalculationError(f"Erro ao calcular o número de trunks: {str(e)}") from e
+        raise CalculationError(f"Error calculating the number of trunks: {str(e)}") from e
 
 def trunks_required(agents: float, contacts_per_interval: float, aht: int, interval: float = 600.0) -> int:
     """Calcula o número de trunks necessários para atender o volume de contatos.
@@ -54,7 +54,7 @@ def trunks_required(agents: float, contacts_per_interval: float, aht: int, inter
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if agents < 0 or contacts_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Valores inválidos para 'agents', 'contacts_per_interval' ou 'aht'.")
+        raise InputValidationError("Invalid values for 'agents', 'contacts_per_interval', or 'aht'.")
 
     try:
         birth_rate: float = contacts_per_interval
@@ -71,4 +71,4 @@ def trunks_required(agents: float, contacts_per_interval: float, aht: int, inter
             no_trunks = 1
         return no_trunks
     except Exception as e:
-        raise CalculationError(f"Erro no cálculo dos trunks: {str(e)}") from e
+        raise CalculationError(f"Error calculating trunks: {str(e)}") from e

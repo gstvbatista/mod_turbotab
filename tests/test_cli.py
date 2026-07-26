@@ -1,4 +1,4 @@
-"""CLI regression tests."""
+"""Testes de regressão da CLI."""
 
 from __future__ import annotations
 
@@ -312,6 +312,42 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 2)
         self.assertIn("turbotab: error:", result.stderr)
+        self.assertIn("Invalid parameters for agents_required.", result.stderr)
+
+    def test_invalid_queue_input_exits_nonzero(self) -> None:
+        result = run_cli(
+            "queues",
+            "queued",
+            "--agents",
+            "-1",
+            "--contacts-per-interval",
+            "25",
+            "--aht",
+            "180",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Invalid parameters for queued.", result.stderr)
+
+    def test_invalid_trunks_input_exits_nonzero(self) -> None:
+        result = run_cli(
+            "telecom",
+            "trunks",
+            "--agents",
+            "-1",
+            "--contacts-per-interval",
+            "25",
+            "--aht",
+            "180",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn(
+            "Invalid values for 'agents', 'contacts_per_interval', or 'aht'.",
+            result.stderr,
+        )
 
     def test_existing_python_api_import_still_works(self) -> None:
         env = os.environ.copy()

@@ -45,6 +45,9 @@ create an issue from that template.
 
 ## Workflow
 
+- **Issues**: self-assign (`gh issue edit <n> --add-assignee gstvbatista`) as
+  soon as you start working an issue, not just when it's closed — assignment
+  signals in-progress ownership to anyone watching the tracker.
 - **Branches**: code changes go through a `feat/*` (or `fix/*`, `docs/*`)
   branch merged into `main` via pull request. Committing directly to `main`
   is acceptable only for trivial docs/config touches.

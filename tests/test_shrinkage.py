@@ -109,7 +109,7 @@ class ShrinkageFactorTests(unittest.TestCase):
 
 
 class AgentsRequiredWithShrinkageTests(unittest.TestCase):
-    BASE = dict(sla=0.80, service_time=20, calls_per_interval=25, aht=180)
+    BASE = dict(sla=0.80, service_time=20, contacts_per_interval=25, aht=180)
 
     def test_zero_shrinkage_matches_agents_required(self) -> None:
         self.assertEqual(
@@ -150,7 +150,7 @@ class AgentsRequiredWithShrinkageTests(unittest.TestCase):
     def test_underlying_validation_still_applies(self) -> None:
         with self.assertRaises(InputValidationError):
             agents_required_with_shrinkage(
-                sla=0.80, service_time=20, calls_per_interval=-5, aht=180
+                sla=0.80, service_time=20, contacts_per_interval=-5, aht=180
             )
 
 

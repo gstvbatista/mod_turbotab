@@ -26,7 +26,7 @@ Key facts:
 | `cli.py` | `turbotab` CLI entry point: argument parsing, command groups, `--json` output |
 | `calculations/erlang.py` | Erlang B, extended Erlang B, Engset B, Erlang C, Erlang A |
 | `calculations/traffic.py` | Inversion/search helpers for traffic intensity |
-| `agents/capacity.py` | Staffing, ASA, call capacity, fractional staffing |
+| `agents/capacity.py` | Staffing, ASA, contact capacity, fractional staffing |
 | `queues/queues.py` | Queued percentage, queue size, wait time, service time, achieved SLA |
 | `trunks/trunks.py` | Telephony trunk sizing |
 | `utils.py` | Numeric helpers: clamping, ceiling, interval conversion |
@@ -130,7 +130,7 @@ create an issue from that template.
   unless the task explicitly asks for packaging, CI, or release work.
 - Preserve public API and CLI flag names already documented in `README.md`
   unless a breaking-change discussion has happened first.
-- Treat units carefully: call volumes are `calls_per_interval`; the default
+- Treat units carefully: contact volumes are `contacts_per_interval`; the default
   `interval` is `600.0` seconds, so default examples are 10-minute buckets.
 - Prefer small, isolated changes. Shared formula changes can affect agents,
   queues, and trunks behavior at once — when changing one formula, inspect
@@ -153,7 +153,7 @@ create an issue from that template.
   blocks (Mathematical model, API reference, ...), not as new top-level
   sections. Formulas belong in the Mathematical model block as ```math
   blocks using the notation table's symbols — never as inline pseudo-code
-  like `A = calls * aht / interval`. New public functions get a row in the
+  like `A = contacts * aht / interval`. New public functions get a row in the
   API reference table; CLI flags are documented by their `--help` text.
 
 ## Validation

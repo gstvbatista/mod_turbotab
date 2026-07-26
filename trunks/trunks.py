@@ -37,13 +37,13 @@ def number_trunks(servers: float, intensity: float) -> int:
     except Exception as e:
         raise CalculationError(f"Erro ao calcular o número de trunks: {str(e)}") from e
 
-def trunks_required(agents: float, calls_per_interval: float, aht: int, interval: float = 600.0) -> int:
-    """Calcula o número de trunks necessários para atender o volume de chamadas.
+def trunks_required(agents: float, contacts_per_interval: float, aht: int, interval: float = 600.0) -> int:
+    """Calcula o número de trunks necessários para atender o volume de contatos.
 
     Args:
         agents (float): Número de agentes.
-        calls_per_interval (float): Chamadas por intervalo.
-        aht (int): Duração média da chamada (em segundos).
+        contacts_per_interval (float): Contatos por intervalo.
+        aht (int): Duração média do contato (em segundos).
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
 
     Returns:
@@ -53,11 +53,11 @@ def trunks_required(agents: float, calls_per_interval: float, aht: int, interval
         InputValidationError: Se os parâmetros forem inválidos (negativos ou AHT não positivo).
         CalculationError: Se ocorrer erro durante o cálculo.
     """
-    if agents < 0 or calls_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Valores inválidos para 'agents', 'calls_per_interval' ou 'aht'.")
-    
+    if agents < 0 or contacts_per_interval < 0 or aht <= 0:
+        raise InputValidationError("Valores inválidos para 'agents', 'contacts_per_interval' ou 'aht'.")
+
     try:
-        birth_rate: float = calls_per_interval
+        birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         utilisation: float = traffic_rate / agents

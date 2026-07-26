@@ -75,7 +75,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["schema_version"], "2.0")
+        self.assertEqual(payload["schema_version"], "2.1")
         self.assertEqual(payload["calculation"], "staffing.required")
         self.assertEqual(payload["inputs"]["shrinkage"], 0.30)
         self.assertEqual(payload["result"]["name"], "headcount")
@@ -168,7 +168,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["schema_version"], "2.0")
+        self.assertEqual(payload["schema_version"], "2.1")
         self.assertEqual(payload["calculation"], "staffing.fractional_required")
         self.assertEqual(payload["result"]["name"], "headcount")
         value = payload["result"]["value"]

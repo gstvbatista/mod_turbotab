@@ -420,20 +420,20 @@ def _add_erlang_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_output_arg(b_parser)
     _add_servers_arg(b_parser)
     _add_intensity_arg(b_parser)
-    _set_handler(b_parser, "erlang.b", "ratio", "blocking_probability", erlang_b)
+    _set_handler(b_parser, "erlang.b", "ratio", "blocking_probability", erlang_b, schema_version="1.0")
 
     b_ext_parser = commands.add_parser("b-ext", help="Calculate retry-aware extended Erlang B.")
     _add_output_arg(b_ext_parser)
     _add_servers_arg(b_ext_parser)
     _add_intensity_arg(b_ext_parser)
     b_ext_parser.add_argument("--retry", type=float, required=True, help="Retry ratio, for example 0.1 for 10%%.")
-    _set_handler(b_ext_parser, "erlang.b_ext", "ratio", "blocking_probability", erlang_b_ext)
+    _set_handler(b_ext_parser, "erlang.b_ext", "ratio", "blocking_probability", erlang_b_ext, schema_version="1.0")
 
     c_parser = commands.add_parser("c", help="Calculate Erlang C queueing probability.")
     _add_output_arg(c_parser)
     _add_servers_arg(c_parser)
     _add_intensity_arg(c_parser)
-    _set_handler(c_parser, "erlang.c", "ratio", "queue_probability", erlang_c)
+    _set_handler(c_parser, "erlang.c", "ratio", "queue_probability", erlang_c, schema_version="1.0")
 
     a_parser = commands.add_parser("a", help="Calculate Erlang A abandonment metrics.")
     _add_output_arg(a_parser)
@@ -449,7 +449,7 @@ def _add_erlang_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_servers_arg(engset_parser)
     engset_parser.add_argument("--events", type=float, required=True, help="Number of finite sources/events.")
     _add_intensity_arg(engset_parser)
-    _set_handler(engset_parser, "erlang.engset_b", "ratio", "blocking_probability", engset_b)
+    _set_handler(engset_parser, "erlang.engset_b", "ratio", "blocking_probability", engset_b, schema_version="1.0")
 
 
 def _add_traffic_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -461,7 +461,7 @@ def _add_traffic_commands(categories: argparse._SubParsersAction[argparse.Argume
     _add_output_arg(intensity_parser)
     _add_servers_arg(intensity_parser)
     intensity_parser.add_argument("--blocking", type=float, required=True, help="Target blocking probability.")
-    _set_handler(intensity_parser, "traffic.intensity", "erlangs", "traffic_intensity", traffic)
+    _set_handler(intensity_parser, "traffic.intensity", "erlangs", "traffic_intensity", traffic, schema_version="1.0")
 
 
 def _add_trunks_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -481,7 +481,7 @@ def _add_trunks_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_output_arg(number_parser)
     _add_servers_arg(number_parser)
     _add_intensity_arg(number_parser)
-    _set_handler(number_parser, "trunks.number", "trunks", "number_trunks", number_trunks)
+    _set_handler(number_parser, "trunks.number", "trunks", "number_trunks", number_trunks, schema_version="1.0")
 
 
 def _add_output_arg(parser: argparse.ArgumentParser) -> None:
@@ -568,9 +568,10 @@ def _set_handler(
     unit: str,
     result_name: str,
     func: Callable[..., Any],
+    schema_version: str = "1.1",
 ) -> None:
     parser.set_defaults(
-        handler=lambda args: _handle_function(args, calculation, unit, result_name, func),
+        handler=lambda args: _handle_function(args, calculation, unit, result_name, func, schema_version),
         calculation=calculation,
     )
 
@@ -581,10 +582,11 @@ def _handle_function(
     unit: str,
     result_name: str,
     func: Callable[..., Any],
+    schema_version: str = "1.1",
 ) -> dict[str, Any]:
     result = func(**_function_inputs(args))
     return {
-        "schema_version": "1.0",
+        "schema_version": schema_version,
         "calculation": calculation,
         "inputs": _public_inputs(args),
         "result": {
@@ -605,7 +607,7 @@ def _handle_headcount_chain(
     productive = required_func(**inputs)
     scheduled = scheduled_func(productive, args.shrinkage)
     return {
-        "schema_version": "2.0",
+        "schema_version": "2.1",
         "calculation": calculation,
         "inputs": _public_inputs(args),
         "result": {

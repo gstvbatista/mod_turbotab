@@ -16,7 +16,7 @@ turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 
 ```
 
 ```json
-{"calculation": "staffing.required", "inputs": {"aht": 180, "contacts_per_interval": 25.0, "interval": 600.0, "service_time": 20, "shrinkage": 0.3, "sla": 0.8}, "result": {"name": "headcount", "unit": "agents", "value": {"productive_agents": 11, "scheduled_agents": 16}}, "schema_version": "2.0"}
+{"calculation": "staffing.required", "inputs": {"aht": 180, "contacts_per_interval": 25.0, "interval": 600.0, "service_time": 20, "shrinkage": 0.3, "sla": 0.8}, "result": {"name": "headcount", "unit": "agents", "value": {"productive_agents": 11, "scheduled_agents": 16}}, "schema_version": "2.1"}
 ```
 
 ## Why
@@ -136,7 +136,7 @@ JSON output is the stable agent contract:
 
 ```json
 {
-  "schema_version": "2.0",
+  "schema_version": "2.1",
   "calculation": "staffing.required",
   "inputs": {
     "aht": 180,
@@ -157,7 +157,7 @@ JSON output is the stable agent contract:
 }
 ```
 
-`staffing required` and `staffing fractional-required` emit the headcount chain under `schema_version` `2.0`; all other commands keep their single-value `1.0` payloads.
+`staffing required` and `staffing fractional-required` emit the headcount chain under `schema_version` `2.1`; commands whose inputs or result fields were renamed by the contacts terminology sweep use `1.1`; unaffected raw-formula commands (`erlang`, `traffic intensity`, `trunks number`) keep the original `1.0` payloads.
 
 The bundled skill lives at [`skills/mod-turbotab/SKILL.md`](skills/mod-turbotab/SKILL.md). It includes command recipes, unit rules, and agent guardrails.
 

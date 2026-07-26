@@ -94,7 +94,7 @@ turbotab erlang a --servers 10 --intensity 8 --patience 60 --aht 180 --target-ti
 
 Parse the JSON object and report:
 
-- `schema_version`: output contract version (`2.0` for the staffing headcount chain, `1.0` elsewhere).
+- `schema_version`: output contract version (`2.1` for the staffing headcount chain, `1.1` for commands renamed by the contacts terminology sweep, `1.0` for unaffected raw-formula commands — `erlang`, `traffic intensity`, `trunks number`).
 - `calculation`: command family and metric.
 - `inputs`: normalized input values used by the calculation.
 - `result.name`: metric name.

@@ -182,6 +182,16 @@ files are staged.
 - Flag any change to a formula in `calculations/`, `agents/capacity.py`,
   `queues/queues.py`, or `trunks/trunks.py` that isn't accompanied by a test
   exercising the new behavior.
+- Flag any new public Python function or capability that is not exposed
+  through a `turbotab` CLI command or flag in the same change, unless the PR
+  explicitly defers that exposure to a tracked issue. The CLI is the primary
+  interface — scripts and AI agents can only reach what it exposes, so a
+  library-only capability is invisible to them and pushes users back to
+  side spreadsheets.
+- When a planning-relevant input (shrinkage, occupancy cap, patience, ...)
+  exists in one surface but not another, flag the asymmetry: silent defaults
+  on the missing surface produce answers that look authoritative but skip a
+  correction the user would have applied.
 - Check edge cases explicitly: zero/negative inputs, overloaded systems
   (utilisation >= 1), and Erlang A patience/abandonment behavior — these are
   the historical failure points in this kind of library.
@@ -198,7 +208,9 @@ files are staged.
 - Flag changes to the search/inversion loops in `calculations/traffic.py`
   that drop or lack an iteration cap or convergence guard — an unbounded
   `while` there can hang on non-converging inputs.
-- If a CLI flag or output field is renamed or removed, confirm the README
-  examples were updated to match.
+- If a CLI flag or output field is added, renamed, or removed, confirm the
+  README examples and the `skills/mod-turbotab/SKILL.md` recipes were updated
+  to match — the skill is how AI agents learn the CLI contract, and a stale
+  recipe silently teaches them the old surface.
 - Flag any new third-party import — this project intentionally has zero
   runtime dependencies. Conversely, do not flag missing dependency pinning.

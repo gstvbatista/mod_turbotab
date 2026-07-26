@@ -14,6 +14,7 @@ from mod_turbotab.agents.capacity import agents_required
 from mod_turbotab.agents.shrinkage import (
     agents_required_with_shrinkage,
     scheduled_agents,
+    scheduled_fractional_agents,
     shrinkage_factor,
 )
 from mod_turbotab.exceptions import InputValidationError
@@ -45,6 +46,28 @@ class ScheduledAgentsTests(unittest.TestCase):
         for bad in (-0.1, 1.0, 1.5):
             with self.assertRaises(InputValidationError):
                 scheduled_agents(11, bad)
+
+
+class ScheduledFractionalAgentsTests(unittest.TestCase):
+    def test_inflates_without_rounding(self) -> None:
+        self.assertAlmostEqual(
+            scheduled_fractional_agents(10.5, 0.3), 10.5 / 0.7, places=12
+        )
+
+    def test_zero_shrinkage_is_identity(self) -> None:
+        self.assertEqual(scheduled_fractional_agents(10.5, 0.0), 10.5)
+
+    def test_zero_agents_stay_zero(self) -> None:
+        self.assertEqual(scheduled_fractional_agents(0.0, 0.3), 0.0)
+
+    def test_negative_agents_rejected(self) -> None:
+        with self.assertRaises(InputValidationError):
+            scheduled_fractional_agents(-0.5, 0.3)
+
+    def test_invalid_shrinkage_rejected(self) -> None:
+        for bad in (-0.1, 1.0, 1.5):
+            with self.assertRaises(InputValidationError):
+                scheduled_fractional_agents(10.5, bad)
 
 
 class ShrinkageFactorTests(unittest.TestCase):

@@ -65,6 +65,36 @@ def scheduled_agents(agents_on_phone: int, shrinkage: float) -> int:
     return int(math.ceil(agents_on_phone / (1.0 - shrinkage) - _SHRINKAGE_EPSILON))
 
 
+def scheduled_fractional_agents(agents_on_phone: float, shrinkage: float) -> float:
+    """Inflate a fractional headcount by the shrinkage factor, unrounded.
+
+    Fractional counterpart of :func:`scheduled_agents` for workflows built
+    on :func:`fractional_agents`, where the whole chain stays fractional and
+    any rounding is left to the caller.
+
+    Args:
+        agents_on_phone (float): Fractional agents required on the phones
+            (e.g. the output of :func:`fractional_agents`).
+        shrinkage (float): Fraction of paid time unavailable for handling
+            calls, in ``[0.0, 1.0)``. ``0.0`` returns ``agents_on_phone``
+            unchanged.
+
+    Returns:
+        float: Fractional headcount to schedule, without rounding.
+
+    Raises:
+        InputValidationError: If ``shrinkage`` is outside ``[0.0, 1.0)`` or
+            ``agents_on_phone`` is negative.
+    """
+    if agents_on_phone < 0:
+        raise InputValidationError(
+            "agents_on_phone deve ser >= 0. "
+            f"Recebido: {agents_on_phone}."
+        )
+    _validate_shrinkage(shrinkage)
+    return float(agents_on_phone) / (1.0 - shrinkage)
+
+
 def shrinkage_factor(
     breaks: float = 0.0,
     training: float = 0.0,

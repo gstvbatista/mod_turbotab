@@ -18,6 +18,7 @@ from mod_turbotab.agents.capacity import (
     fractional_call_capacity,
     nb_agents,
 )
+from mod_turbotab.agents.shrinkage import scheduled_agents, scheduled_fractional_agents
 from mod_turbotab.calculations.erlang import (
     engset_b,
     erlang_a,
@@ -100,7 +101,13 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_interval_arg(required)
     _add_patience_arg(required)
     _add_max_occupancy_arg(required)
-    _set_handler(required, "staffing.required", "agents", "agents", agents_required)
+    _add_shrinkage_arg(required)
+    required.set_defaults(
+        handler=lambda args: _handle_headcount_chain(
+            args, "staffing.required", agents_required, scheduled_agents
+        ),
+        calculation="staffing.required",
+    )
 
     asa_parser = commands.add_parser("asa", help="Calculate average speed of answer in seconds.")
     _add_output_arg(asa_parser)
@@ -131,12 +138,15 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_aht_arg(fractional_required)
     _add_interval_arg(fractional_required)
     _add_patience_arg(fractional_required)
-    _set_handler(
-        fractional_required,
-        "staffing.fractional_required",
-        "agents",
-        "fractional_agents",
-        fractional_agents,
+    _add_shrinkage_arg(fractional_required)
+    fractional_required.set_defaults(
+        handler=lambda args: _handle_headcount_chain(
+            args,
+            "staffing.fractional_required",
+            fractional_agents,
+            scheduled_fractional_agents,
+        ),
+        calculation="staffing.fractional_required",
     )
 
     fractional_capacity = commands.add_parser(
@@ -496,6 +506,18 @@ def _add_patience_arg(parser: argparse.ArgumentParser, required: bool = False) -
     )
 
 
+def _add_shrinkage_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--shrinkage",
+        type=float,
+        required=True,
+        help=(
+            "Fraction of paid time off the phones (breaks, training, absenteeism, "
+            "legally mandated rest), in [0, 1). Required — pass 0 for no shrinkage."
+        ),
+    )
+
+
 def _add_max_occupancy_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--max-occupancy",
@@ -535,6 +557,30 @@ def _handle_function(
             "name": result_name,
             "value": result,
             "unit": unit,
+        },
+    }
+
+
+def _handle_headcount_chain(
+    args: argparse.Namespace,
+    calculation: str,
+    required_func: Callable[..., Any],
+    scheduled_func: Callable[[Any, float], Any],
+) -> dict[str, Any]:
+    inputs = _function_inputs(args, exclude={"shrinkage"})
+    productive = required_func(**inputs)
+    scheduled = scheduled_func(productive, args.shrinkage)
+    return {
+        "schema_version": "2.0",
+        "calculation": calculation,
+        "inputs": _public_inputs(args),
+        "result": {
+            "name": "headcount",
+            "value": {
+                "productive_agents": productive,
+                "scheduled_agents": scheduled,
+            },
+            "unit": "agents",
         },
     }
 

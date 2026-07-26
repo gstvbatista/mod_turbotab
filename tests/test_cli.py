@@ -1,4 +1,4 @@
-"""CLI regression tests."""
+"""Testes de regressão da CLI."""
 
 from __future__ import annotations
 

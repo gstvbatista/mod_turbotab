@@ -24,7 +24,7 @@ def queued(agents: float, contacts_per_interval: float, aht: int, interval: floa
         InputValidationError: Se os parâmetros forem inválidos.
     """
     if agents < 0 or contacts_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para queued.")
+        raise InputValidationError("Invalid parameters for queued.")
     try:
         birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
@@ -35,7 +35,7 @@ def queued(agents: float, contacts_per_interval: float, aht: int, interval: floa
         q: float = erlang_c(agents, traffic_rate)
         return min_max(q, 0.0, 1.0)
     except Exception as e:
-        raise CalculationError(f"Erro em queued: {str(e)}") from e
+        raise CalculationError(f"Error in queued: {str(e)}") from e
 
 def queue_size(agents: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
     """Calcula o tamanho médio da fila (número de contatos).
@@ -55,7 +55,7 @@ def queue_size(agents: float, contacts_per_interval: float, aht: int, interval: 
         InputValidationError: Se os parâmetros forem inválidos.
     """
     if agents < 0 or contacts_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para queue_size.")
+        raise InputValidationError("Invalid parameters for queue_size.")
     try:
         birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
@@ -73,7 +73,7 @@ def queue_size(agents: float, contacts_per_interval: float, aht: int, interval: 
         qsize = (utilisation * c) / (1 - utilisation)
         return int(qsize + 0.5)
     except Exception as e:
-        raise CalculationError(f"Erro em queue_size: {str(e)}") from e
+        raise CalculationError(f"Error in queue_size: {str(e)}") from e
 
 def queue_time(agents: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
     """Calcula o tempo médio de espera na fila (em segundos).
@@ -93,7 +93,7 @@ def queue_time(agents: float, contacts_per_interval: float, aht: int, interval: 
         InputValidationError: Se os parâmetros forem inválidos.
     """
     if agents < 0 or contacts_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para queue_time.")
+        raise InputValidationError("Invalid parameters for queue_time.")
     try:
         birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
@@ -107,7 +107,7 @@ def queue_time(agents: float, contacts_per_interval: float, aht: int, interval: 
         qtime: float = 1 / (agents * death_rate * (1 - utilisation))
         return secs(qtime)
     except Exception as e:
-        raise CalculationError(f"Erro em queue_time: {str(e)}") from e
+        raise CalculationError(f"Error in queue_time: {str(e)}") from e
 
 def service_time(agents: float, sla: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> int:
     """Calcula o tempo médio de espera para que uma dada porcentagem de contatos seja atendida.
@@ -129,13 +129,13 @@ def service_time(agents: float, sla: float, contacts_per_interval: float, aht: i
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if agents < 0 or sla < 0 or contacts_per_interval < 0 or aht <= 0:
-        raise InputValidationError("Parâmetros inválidos para service_time.")
+        raise InputValidationError("Invalid parameters for service_time.")
     try:
         birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
         traffic_rate: float = birth_rate / death_rate
         if traffic_rate >= agents:
-            raise CalculationError("Sistema sobrecarregado: tráfego >= agentes")
+            raise CalculationError("Overloaded system: traffic >= agents")
         if patience is not None:
             ea: dict = erlang_a(agents, traffic_rate, patience, aht)
             sla_func = ea['sla']
@@ -155,13 +155,13 @@ def service_time(agents: float, sla: float, contacts_per_interval: float, aht: i
             return 0
         ratio: float = (1 - sla) / c
         if ratio <= 0:
-            raise CalculationError("Razão inválida para cálculo logarítmico")
+            raise CalculationError("Invalid ratio for logarithmic calculation")
         t: float = aht * math.log(ratio) / (traffic_rate - agents)
         if t < 0:
             t = 0.0
         return int(t + 0.5)
     except Exception as e:
-        raise CalculationError(f"Erro em service_time: {str(e)}") from e
+        raise CalculationError(f"Error in service_time: {str(e)}") from e
 
 def sla_metric(agents: float, service_time_val: float, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
     """Calcula o SLA alcançado para um número dado de agentes.
@@ -183,7 +183,7 @@ def sla_metric(agents: float, service_time_val: float, contacts_per_interval: fl
         CalculationError: Se ocorrer erro durante o cálculo.
     """
     if agents < 0 or contacts_per_interval < 0 or aht <= 0 or service_time_val < 0:
-        raise InputValidationError("Parâmetros inválidos para sla_metric.")
+        raise InputValidationError("Invalid parameters for sla_metric.")
     try:
         birth_rate: float = contacts_per_interval
         death_rate: float = interval / aht
@@ -198,4 +198,4 @@ def sla_metric(agents: float, service_time_val: float, contacts_per_interval: fl
         sl_queued: float = 1 - c * math.exp((traffic_rate - agents) * service_time_val / aht)
         return min_max(sl_queued, 0.0, 1.0)
     except Exception as e:
-        raise CalculationError(f"Erro em sla_metric: {str(e)}") from e
+        raise CalculationError(f"Error in sla_metric: {str(e)}") from e

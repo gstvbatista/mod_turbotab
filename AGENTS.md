@@ -149,6 +149,19 @@ create an issue from that template.
   in English.
 - Avoid broad refactors when fixing formulas. Make the smallest change that
   can be validated.
+
+### Language convention
+
+- **Anything that reaches the user at runtime** — `InputValidationError`/
+  `CalculationError` messages, `print()` output, argparse `help=`/
+  `description=` text, `--version` strings — is **English**. These strings
+  hit CLI stderr or the `--json` error payload directly, so they're
+  user-facing output, not internal documentation.
+- **Anything that's a comment for the next reader of the source** —
+  docstrings, inline `#` comments — is **pt-br**.
+- Code identifiers (function/variable/parameter names) are unaffected — they
+  stay in English regardless of which side of the split they sit on.
+- See issue #39 for the audit that established this split.
 - README style: deep-dive content goes inside the existing `<details>`
   blocks (Mathematical model, API reference, ...), not as new top-level
   sections. Formulas belong in the Mathematical model block as ```math

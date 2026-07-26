@@ -1,53 +1,59 @@
-"""Multi-skill Erlang C dimensioning (Option A: skill partitioning + sharing factor).
+"""Dimensionamento multi-skill Erlang C (Opção A: particionamento de skill + sharing factor).
 
-This module ships the simplest of three multi-skill approaches described in
-the roadmap spec (GitHub issue #15). It models a contact-center where
-multiple skill groups (e.g., billing, tech support) may be served by a mix of
-dedicated and cross-skilled agent pools.
+Este módulo implementa a mais simples das três abordagens multi-skill
+descritas no spec do roadmap (issue #15 do GitHub). Modela um contact center
+onde múltiplos grupos de skill (ex.: cobrança, suporte técnico) podem ser
+atendidos por uma mistura de pools de agentes dedicados e cross-skilled.
 
-Three approaches were considered (see Koole 2013; Borst, Mandelbaum & Reiman
-2004 for the full discussion):
+Três abordagens foram consideradas (ver Koole 2013; Borst, Mandelbaum & Reiman
+2004 para a discussão completa):
 
-Option A — implemented here. Treat each skill group as an independent Erlang C
-    queue and apply a *sharing factor* to capture the pooling efficiency that
-    cross-skilled agents provide. Pure Python, zero third-party dependencies.
-    Good for planning estimates; loses accuracy when overlap is large or when
-    priority routing meaningfully reshapes the offered load distribution.
+Opção A — implementada aqui. Trata cada grupo de skill como uma fila Erlang C
+    independente e aplica um *sharing factor* para capturar o ganho de
+    eficiência de pooling que os agentes cross-skilled proporcionam. Python
+    puro, zero dependências de terceiros. Boa para estimativas de
+    planejamento; perde precisão quando o overlap é grande ou quando o
+    roteamento por prioridade reformula significativamente a distribuição de
+    carga ofertada.
 
-Option B — TODO (out of scope for this wish). Monte-Carlo simulation of
-    arrivals across skill groups with agents modeled as skill vectors and
-    priority-based routing. Most accurate of the three, but the simulation
-    harness lives in ``simulation/intraday.py``; integrate after that module
-    stabilizes. Doable in pure Python via ``random``.
+Opção B — TODO (fora do escopo deste wish). Simulação Monte Carlo de chegadas
+    entre grupos de skill, com agentes modelados como vetores de skill e
+    roteamento por prioridade. A mais precisa das três, mas o harness de
+    simulação vive em ``simulation/intraday.py``; integrar após esse módulo
+    estabilizar. Viável em Python puro via ``random``.
 
-Option C — TODO (out of scope for this wish). Extended Erlang C (ECCS): an
-    analytical approximation built by decomposing the multi-skill system into
-    virtual single-skill queues via matrix operations. More accurate than
-    Option A, lighter than Option B, but the natural implementation leans on
-    numpy for the linear algebra. Defer until either (a) a small pure-Python
-    matrix utility lands or (b) the zero-dependency rule is revisited.
+Opção C — TODO (fora do escopo deste wish). Erlang C estendido (ECCS): uma
+    aproximação analítica construída decompondo o sistema multi-skill em
+    filas virtuais single-skill via operações matriciais. Mais precisa que a
+    Opção A, mais leve que a Opção B, mas a implementação natural depende de
+    numpy para a álgebra linear. Adiar até que (a) um utilitário matricial em
+    Python puro esteja disponível ou (b) a regra de zero dependências seja
+    revisitada.
 
-The Option A algorithm:
+O algoritmo da Opção A:
 
-1. For each skill group, compute the baseline single-skill headcount via the
-   existing ``agents_required`` function (pure Erlang C, with optional Erlang A
-   patience).
-2. Detect which skills are served by at least one cross-skilled pool
-   (``len(pool["skills"]) > 1`` and ``pool["count"] > 0``).
-3. For cross-skilled skills, apply ``sharing_factor`` (default ``0.9``) to the
-   baseline. This represents the pooling efficiency gain — fewer agents are
-   needed when peak demand from one skill can be absorbed by agents idle on
-   another. Smaller ``sharing_factor`` ⇒ larger assumed pooling benefit.
-4. Floor the adjusted headcount at ``ceil(offered_traffic) + 1`` to keep
-   utilization strictly below 100% per skill.
-5. Aggregate totals: naive sum (no sharing), adjusted sum (with sharing),
-   savings, and whether the resulting requirement fits the declared
-   ``agent_pools``. The fit check solves the underlying assignment problem
-   exactly via bipartite max-flow (Edmonds-Karp, pure Python), so
-   overlapping shared pools are not double-counted across skills.
+1. Para cada grupo de skill, calcula o headcount single-skill baseline via a
+   função ``agents_required`` existente (Erlang C puro, com paciência Erlang A
+   opcional).
+2. Detecta quais skills são atendidas por pelo menos um pool cross-skilled
+   (``len(pool["skills"]) > 1`` e ``pool["count"] > 0``).
+3. Para skills cross-skilled, aplica o ``sharing_factor`` (padrão ``0.9``) ao
+   baseline. Isso representa o ganho de eficiência de pooling — menos
+   agentes são necessários quando o pico de demanda de uma skill pode ser
+   absorvido por agentes ociosos em outra. ``sharing_factor`` menor ⇒ maior
+   benefício de pooling assumido.
+4. Estabelece um piso para o headcount ajustado em ``ceil(offered_traffic) + 1``
+   para manter a utilização estritamente abaixo de 100% por skill.
+5. Agrega os totais: soma ingênua (sem sharing), soma ajustada (com sharing),
+   economia, e se o requisito resultante cabe nos ``agent_pools``
+   declarados. A checagem de viabilidade resolve o problema de alocação
+   subjacente de forma exata via fluxo máximo bipartite (Edmonds-Karp, Python
+   puro), de modo que pools compartilhados sobrepostos não sejam contados em
+   dobro entre skills.
 
-The function returns a structured dict (no side effects, no I/O), suitable for
-piping into ``--json`` CLI output if the CLI surface picks this up later.
+A função retorna um dict estruturado (sem efeitos colaterais, sem I/O),
+adequado para alimentar a saída ``--json`` da CLI caso a superfície da CLI
+venha a expor isso futuramente.
 """
 
 import math
@@ -119,59 +125,59 @@ def agents_required_multi(
         InputValidationError: Se as entradas forem inválidas.
     """
     if not isinstance(skill_groups, list) or not skill_groups:
-        raise InputValidationError("skill_groups deve ser uma lista não-vazia.")
+        raise InputValidationError("skill_groups must be a non-empty list.")
     if not isinstance(agent_pools, list) or not agent_pools:
-        raise InputValidationError("agent_pools deve ser uma lista não-vazia.")
+        raise InputValidationError("agent_pools must be a non-empty list.")
     if not (0 < sharing_factor <= 1):
-        raise InputValidationError("sharing_factor deve estar em (0, 1].")
+        raise InputValidationError("sharing_factor must be in (0, 1].")
     if sla < 0 or sla > 1:
-        raise InputValidationError("sla deve estar em [0, 1].")
+        raise InputValidationError("sla must be in [0, 1].")
     if service_time < 0:
-        raise InputValidationError("service_time deve ser >= 0.")
+        raise InputValidationError("service_time must be >= 0.")
     if interval <= 0:
-        raise InputValidationError("interval deve ser > 0.")
+        raise InputValidationError("interval must be > 0.")
     if patience is not None and patience <= 0:
-        raise InputValidationError("patience deve ser > 0 quando informada.")
+        raise InputValidationError("patience must be > 0 when provided.")
 
     seen_names = set()
     for sg in skill_groups:
         for key in ("name", "contacts_per_interval", "aht"):
             if key not in sg:
                 raise InputValidationError(
-                    f"skill_group requer as chaves: name, contacts_per_interval, aht. "
-                    f"Faltando: {key}."
+                    f"skill_group requires the keys: name, contacts_per_interval, aht. "
+                    f"Missing: {key}."
                 )
         if sg["name"] in seen_names:
-            raise InputValidationError(f"skill duplicado: {sg['name']}.")
+            raise InputValidationError(f"duplicate skill: {sg['name']}.")
         seen_names.add(sg["name"])
         if sg["contacts_per_interval"] < 0:
             raise InputValidationError(
-                f"contacts_per_interval inválido para '{sg['name']}'."
+                f"invalid contacts_per_interval for '{sg['name']}'."
             )
         if sg["aht"] <= 0:
             raise InputValidationError(
-                f"aht deve ser > 0 para '{sg['name']}'."
+                f"aht must be > 0 for '{sg['name']}'."
             )
 
     for pool in agent_pools:
         if "skills" not in pool or "count" not in pool:
             raise InputValidationError(
-                "agent_pool requer as chaves: skills, count."
+                "agent_pool requires the keys: skills, count."
             )
         if not isinstance(pool["skills"], list) or not pool["skills"]:
             raise InputValidationError(
-                "pool.skills deve ser uma lista não-vazia."
+                "pool.skills must be a non-empty list."
             )
         if len(set(pool["skills"])) != len(pool["skills"]):
             raise InputValidationError(
-                "pool.skills não pode repetir a mesma skill."
+                "pool.skills must not repeat the same skill."
             )
         if pool["count"] < 0:
-            raise InputValidationError("pool.count não pode ser negativo.")
+            raise InputValidationError("pool.count must not be negative.")
         for sk in pool["skills"]:
             if sk not in seen_names:
                 raise InputValidationError(
-                    f"pool refere skill desconhecida: '{sk}'."
+                    f"pool references unknown skill: '{sk}'."
                 )
 
     cross_skilled_set = set()

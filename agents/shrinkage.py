@@ -23,14 +23,29 @@ from mod_turbotab.exceptions import InputValidationError
 _SHRINKAGE_EPSILON: float = 1e-9
 
 
+def _validate_agents_on_phone(agents_on_phone: float) -> None:
+    """Reject negative or non-finite on-phone headcounts.
+
+    NaN compares false to every bound, so a negative-only check would let
+    NaN (and inf) flow through and propagate into results and JSON output.
+    """
+    if not math.isfinite(agents_on_phone) or agents_on_phone < 0:
+        raise InputValidationError(
+            "agents_on_phone deve ser um valor finito >= 0. "
+            f"Recebido: {agents_on_phone}."
+        )
+
+
 def _validate_shrinkage(shrinkage: float) -> None:
     """Reject invalid shrinkage factors.
 
-    Shrinkage must be in ``[0.0, 1.0)``. A value of ``1.0`` would imply the
-    workforce is entirely unavailable (division by zero); negative values are
-    nonsensical.
+    Shrinkage must be a finite value in ``[0.0, 1.0)``. A value of ``1.0``
+    would imply the workforce is entirely unavailable (division by zero);
+    negative values are nonsensical. Non-finite values (NaN/inf) slip past
+    range checks — NaN compares false to everything — and would propagate
+    into results and produce invalid JSON output.
     """
-    if shrinkage < 0 or shrinkage >= 1.0:
+    if not math.isfinite(shrinkage) or shrinkage < 0 or shrinkage >= 1.0:
         raise InputValidationError(
             "Shrinkage deve estar no intervalo [0.0, 1.0). "
             f"Recebido: {shrinkage}."
@@ -54,15 +69,37 @@ def scheduled_agents(agents_on_phone: int, shrinkage: float) -> int:
         InputValidationError: If ``shrinkage`` is outside ``[0.0, 1.0)`` or
             ``agents_on_phone`` is negative.
     """
-    if agents_on_phone < 0:
-        raise InputValidationError(
-            "agents_on_phone deve ser >= 0. "
-            f"Recebido: {agents_on_phone}."
-        )
+    _validate_agents_on_phone(agents_on_phone)
     _validate_shrinkage(shrinkage)
     if shrinkage == 0.0:
         return int(agents_on_phone)
     return int(math.ceil(agents_on_phone / (1.0 - shrinkage) - _SHRINKAGE_EPSILON))
+
+
+def scheduled_fractional_agents(agents_on_phone: float, shrinkage: float) -> float:
+    """Inflate a fractional headcount by the shrinkage factor, unrounded.
+
+    Fractional counterpart of :func:`scheduled_agents` for workflows built
+    on :func:`fractional_agents`, where the whole chain stays fractional and
+    any rounding is left to the caller.
+
+    Args:
+        agents_on_phone (float): Fractional agents required on the phones
+            (e.g. the output of :func:`fractional_agents`).
+        shrinkage (float): Fraction of paid time unavailable for handling
+            calls, in ``[0.0, 1.0)``. ``0.0`` returns ``agents_on_phone``
+            unchanged.
+
+    Returns:
+        float: Fractional headcount to schedule, without rounding.
+
+    Raises:
+        InputValidationError: If ``shrinkage`` is outside ``[0.0, 1.0)`` or
+            ``agents_on_phone`` is negative.
+    """
+    _validate_agents_on_phone(agents_on_phone)
+    _validate_shrinkage(shrinkage)
+    return float(agents_on_phone) / (1.0 - shrinkage)
 
 
 def shrinkage_factor(

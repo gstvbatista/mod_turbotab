@@ -44,7 +44,60 @@ class CliTests(unittest.TestCase):
         self.assertIn("--calls-per-interval", result.stdout)
         self.assertIn("--sla", result.stdout)
 
-    def test_agents_required_json(self) -> None:
+    def test_staffing_required_headcount_chain_json(self) -> None:
+        result = run_cli(
+            "staffing",
+            "required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--calls-per-interval",
+            "25",
+            "--aht",
+            "180",
+            "--shrinkage",
+            "0.30",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["schema_version"], "2.0")
+        self.assertEqual(payload["calculation"], "staffing.required")
+        self.assertEqual(payload["inputs"]["shrinkage"], 0.30)
+        self.assertEqual(payload["result"]["name"], "headcount")
+        self.assertEqual(payload["result"]["unit"], "agents")
+        self.assertEqual(
+            payload["result"]["value"],
+            {"productive_agents": 11, "scheduled_agents": 16},
+        )
+
+    def test_staffing_required_zero_shrinkage_keeps_erlang_headcount(self) -> None:
+        result = run_cli(
+            "staffing",
+            "required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--calls-per-interval",
+            "25",
+            "--aht",
+            "180",
+            "--shrinkage",
+            "0",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(
+            payload["result"]["value"],
+            {"productive_agents": 11, "scheduled_agents": 11},
+        )
+
+    def test_staffing_required_without_shrinkage_exits_nonzero(self) -> None:
         result = run_cli(
             "staffing",
             "required",
@@ -59,13 +112,59 @@ class CliTests(unittest.TestCase):
             "--json",
         )
 
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--shrinkage", result.stderr)
+
+    def test_staffing_required_invalid_shrinkage_exits_nonzero(self) -> None:
+        for bad in ("1.0", "nan", "inf"):
+            with self.subTest(shrinkage=bad):
+                result = run_cli(
+                    "staffing",
+                    "required",
+                    "--sla",
+                    "0.80",
+                    "--service-time",
+                    "20",
+                    "--calls-per-interval",
+                    "25",
+                    "--aht",
+                    "180",
+                    "--shrinkage",
+                    bad,
+                    "--json",
+                )
+
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("Shrinkage", result.stderr)
+
+    def test_staffing_fractional_required_headcount_chain_json(self) -> None:
+        result = run_cli(
+            "staffing",
+            "fractional-required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--calls-per-interval",
+            "25",
+            "--aht",
+            "180",
+            "--shrinkage",
+            "0.30",
+            "--json",
+        )
+
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["schema_version"], "1.0")
-        self.assertEqual(payload["calculation"], "staffing.required")
-        self.assertEqual(payload["result"]["name"], "agents")
-        self.assertEqual(payload["result"]["unit"], "agents")
-        self.assertEqual(payload["result"]["value"], 11)
+        self.assertEqual(payload["schema_version"], "2.0")
+        self.assertEqual(payload["calculation"], "staffing.fractional_required")
+        self.assertEqual(payload["result"]["name"], "headcount")
+        value = payload["result"]["value"]
+        # A cadeia fracionária não arredonda em nenhum passo.
+        self.assertAlmostEqual(value["productive_agents"], 10.285163130544403)
+        self.assertAlmostEqual(
+            value["scheduled_agents"], value["productive_agents"] / 0.7
+        )
 
     def test_staffing_required_max_occupancy_json(self) -> None:
         result = run_cli(
@@ -81,13 +180,15 @@ class CliTests(unittest.TestCase):
             "180",
             "--max-occupancy",
             "0.85",
+            "--shrinkage",
+            "0",
             "--json",
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
         self.assertEqual(payload["inputs"]["max_occupancy"], 0.85)
-        self.assertEqual(payload["result"]["value"], 36)
+        self.assertEqual(payload["result"]["value"]["productive_agents"], 36)
 
     def test_staffing_required_invalid_max_occupancy_exits_nonzero(self) -> None:
         result = run_cli(
@@ -103,6 +204,8 @@ class CliTests(unittest.TestCase):
             "180",
             "--max-occupancy",
             "1.5",
+            "--shrinkage",
+            "0",
             "--json",
         )
 

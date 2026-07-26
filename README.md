@@ -12,11 +12,11 @@ CLI-first TurboTable-style calculations for contact-center planning.
 `mod_turbotab` keeps the historical name known by call-center planning and traffic analysts, while exposing `turbotab` as the primary interface for humans, scripts, and AI agents.
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
 ```
 
 ```json
-{"calculation": "staffing.required", "inputs": {"aht": 180, "calls_per_interval": 25.0, "interval": 600.0, "service_time": 20, "sla": 0.8}, "result": {"name": "agents", "unit": "agents", "value": 11}, "schema_version": "1.0"}
+{"calculation": "staffing.required", "inputs": {"aht": 180, "calls_per_interval": 25.0, "interval": 600.0, "service_time": 20, "shrinkage": 0.3, "sla": 0.8}, "result": {"name": "headcount", "unit": "agents", "value": {"productive_agents": 11, "scheduled_agents": 16}}, "schema_version": "2.0"}
 ```
 
 ## Why
@@ -35,7 +35,7 @@ It provides Erlang B, extended Erlang B, Engset B, Erlang C, Erlang A, queue met
 
 ## Quick Start
 
-Required staffing for 80% SLA in 20 seconds:
+Required staffing for 80% SLA in 20 seconds, with 30% shrinkage:
 
 ```bash
 turbotab staffing required \
@@ -43,8 +43,11 @@ turbotab staffing required \
   --service-time 20 \
   --calls-per-interval 25 \
   --aht 180 \
+  --shrinkage 0.30 \
   --json
 ```
+
+`--shrinkage` is required: it is the fraction of paid time agents are off the phones (breaks, training, absenteeism, legally mandated rest). Pass `0` explicitly when there is none — the CLI never assumes it.
 
 Achieved SLA for a fixed staffing level:
 
@@ -126,29 +129,35 @@ Use `--json` when calling from agents or automation. Invalid inputs exit non-zer
 Agents should prefer the CLI with `--json` instead of parsing text output or importing Python internals.
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
 ```
 
 JSON output is the stable agent contract:
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "calculation": "staffing.required",
   "inputs": {
     "aht": 180,
     "calls_per_interval": 25.0,
     "interval": 600.0,
     "service_time": 20,
+    "shrinkage": 0.3,
     "sla": 0.8
   },
   "result": {
-    "name": "agents",
+    "name": "headcount",
     "unit": "agents",
-    "value": 11
+    "value": {
+      "productive_agents": 11,
+      "scheduled_agents": 16
+    }
   }
 }
 ```
+
+`staffing required` and `staffing fractional-required` emit the headcount chain under `schema_version` `2.0`; all other commands keep their single-value `1.0` payloads.
 
 The bundled skill lives at [`skills/mod-turbotab/SKILL.md`](skills/mod-turbotab/SKILL.md). It includes command recipes, unit rules, and agent guardrails.
 
@@ -173,7 +182,7 @@ Every function or CLI command that accepts call volume uses `calls_per_interval`
 For hourly semantics, pass `--interval 3600`:
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 150 --aht 180 --interval 3600 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 150 --aht 180 --interval 3600 --shrinkage 0 --json
 ```
 
 Traffic intensity is computed as:
@@ -197,21 +206,25 @@ With the default 10-minute bucket:
 | AHT | `180` seconds |
 | Target SLA | `0.80` |
 | Target answer time | `20` seconds |
+| Shrinkage | `0.30` |
 
 CLI:
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
 turbotab sla achieved --agents 11 --service-time 20 --calls-per-interval 25 --aht 180 --json
 turbotab queue wait --agents 11 --calls-per-interval 25 --aht 180 --json
 turbotab telecom trunks --agents 11 --calls-per-interval 25 --aht 180 --json
 ```
 
+The queue metrics (`sla achieved`, `queue wait`, `telecom trunks`) take the **productive** agents — shrinkage covers who is off the phones, not queue behavior.
+
 Expected headline results:
 
 | Metric | Result |
 |---|---:|
-| Required agents | `11` |
+| Productive agents (on phones) | `11` |
+| Scheduled agents (after 30% shrinkage) | `16` |
 | Achieved SLA | `0.880836` |
 | Average queue wait | `51` seconds |
 | Required trunks | `18` |
@@ -220,8 +233,12 @@ Python API equivalent:
 
 ```python
 from mod_turbotab.agents.capacity import agents_required
+from mod_turbotab.agents.shrinkage import scheduled_agents
 
-print(agents_required(0.80, 20, 25, 180))
+productive = agents_required(0.80, 20, 25, 180)
+scheduled = scheduled_agents(productive, 0.30)
+
+print(productive, scheduled)  # 11 16
 ```
 
 </details>
@@ -320,6 +337,14 @@ N_{\mathrm{scheduled}} = \left\lceil \frac{N_{\mathrm{phones}}}{1 - S} \right\rc
 
 `S` must be in `[0, 1)` and can be composed from individual components with `shrinkage_factor` (components are additive slices of paid time off the phones). With `S = 0` the result is the unchanged Erlang headcount.
 
+The fractional counterpart (`scheduled_fractional_agents`) applies the same correction without rounding, for chains built on `fractional_agents`:
+
+```math
+N_{\mathrm{scheduled}}^{\mathrm{frac}} = \frac{N_{\mathrm{phones}}^{\mathrm{frac}}}{1 - S}
+```
+
+On the CLI, `S` is the mandatory `--shrinkage` flag of `staffing required` and `staffing fractional-required`; both emit the full `productive_agents`/`scheduled_agents` chain.
+
 </details>
 
 <details>
@@ -333,7 +358,7 @@ The CLI is the primary interface, but the Python API remains available.
 | `calculations.traffic` | `traffic`, `looping_traffic` |
 | `calculations.multi_skill` | `agents_required_multi` |
 | `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `call_capacity`, `fractional_agents`, `fractional_call_capacity`, `occupancy`, `is_within_occupancy` |
-| `agents.shrinkage` | `scheduled_agents`, `shrinkage_factor`, `agents_required_with_shrinkage` |
+| `agents.shrinkage` | `scheduled_agents`, `scheduled_fractional_agents`, `shrinkage_factor`, `agents_required_with_shrinkage` |
 | `queues.queues` | `queued`, `queue_size`, `queue_time`, `service_time`, `sla_metric` |
 | `trunks.trunks` | `number_trunks`, `trunks_required` |
 | `utils` | `min_max`, `int_ceiling`, `secs` |

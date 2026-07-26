@@ -13,7 +13,7 @@ Use the `turbotab` CLI with `--json` as the primary interface.
 
 ```bash
 turbotab --help
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
 ```
 
 If the package is not installed, install it from the repo checkout with `uv`:
@@ -37,16 +37,22 @@ python3 -m pip install -e .
 - For hourly volumes, pass `--interval 3600`.
 - `aht`, `service-time`, `patience`, and `interval` are seconds.
 - SLA values are ratios, for example `0.80` for 80%.
+- `shrinkage` is a ratio in `[0, 1)`: the fraction of paid time agents are off the phones (breaks, training, absenteeism, legally mandated rest such as Brazil's NR-17 pause). It is **required** on `staffing required` and `staffing fractional-required`.
 
 When the user gives an arrival volume without a time bucket, ask whether it is per 10 minutes, per hour, or another interval before calculating.
 
+When the user asks for required staffing and has not given a shrinkage factor, ask for it before calculating. Only pass `--shrinkage 0` when the user explicitly confirms there is none — never assume zero silently.
+
 ## Recipes
 
-Required agents:
+Required headcount (productive agents plus scheduled agents after shrinkage):
 
 ```bash
-turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --json
+turbotab staffing required --sla 0.80 --service-time 20 --calls-per-interval 25 --aht 180 --shrinkage 0.30 --json
+# result.value: {"productive_agents": 11, "scheduled_agents": 16}
 ```
+
+Downstream commands (`sla achieved`, `queue wait`, `telecom trunks`) take the **productive** agents, not the scheduled ones — shrinkage covers who is off the phones, not queue behavior.
 
 Achieved SLA:
 
@@ -88,11 +94,11 @@ turbotab erlang a --servers 10 --intensity 8 --patience 60 --aht 180 --target-ti
 
 Parse the JSON object and report:
 
-- `schema_version`: output contract version.
+- `schema_version`: output contract version (`2.0` for the staffing headcount chain, `1.0` elsewhere).
 - `calculation`: command family and metric.
 - `inputs`: normalized input values used by the calculation.
 - `result.name`: metric name.
-- `result.value`: numeric result.
+- `result.value`: numeric result, or an object for chained results (e.g. `headcount` with `productive_agents` and `scheduled_agents`).
 - `result.unit`: result unit or ratio.
 
 Do not scrape human text output when `--json` is available.

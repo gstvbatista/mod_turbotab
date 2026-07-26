@@ -18,6 +18,7 @@ from mod_turbotab.agents.capacity import (
     fractional_call_capacity,
     nb_agents,
 )
+from mod_turbotab.agents.shrinkage import scheduled_agents, scheduled_fractional_agents
 from mod_turbotab.calculations.erlang import (
     engset_b,
     erlang_a,
@@ -100,7 +101,13 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_interval_arg(required)
     _add_patience_arg(required)
     _add_max_occupancy_arg(required)
-    _set_handler(required, "staffing.required", "agents", "agents", agents_required)
+    _add_shrinkage_arg(required)
+    required.set_defaults(
+        handler=lambda args: _handle_headcount_chain(
+            args, "staffing.required", agents_required, scheduled_agents
+        ),
+        calculation="staffing.required",
+    )
 
     asa_parser = commands.add_parser("asa", help="Calculate average speed of answer in seconds.")
     _add_output_arg(asa_parser)
@@ -113,7 +120,13 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
 
     capacity = commands.add_parser("capacity", help="Calculate maximum calls for a staffed SLA target.")
     _add_output_arg(capacity)
-    capacity.add_argument("--agents", dest="no_agents", type=float, required=True, help="Available agents.")
+    capacity.add_argument(
+        "--agents",
+        dest="no_agents",
+        type=float,
+        required=True,
+        help="Available productive (on-phone) agents, not shrinkage-inflated scheduled headcount.",
+    )
     _add_sla_arg(capacity)
     _add_service_time_arg(capacity)
     _add_aht_arg(capacity)
@@ -131,12 +144,15 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_aht_arg(fractional_required)
     _add_interval_arg(fractional_required)
     _add_patience_arg(fractional_required)
-    _set_handler(
-        fractional_required,
-        "staffing.fractional_required",
-        "agents",
-        "fractional_agents",
-        fractional_agents,
+    _add_shrinkage_arg(fractional_required)
+    fractional_required.set_defaults(
+        handler=lambda args: _handle_headcount_chain(
+            args,
+            "staffing.fractional_required",
+            fractional_agents,
+            scheduled_fractional_agents,
+        ),
+        calculation="staffing.fractional_required",
     )
 
     fractional_capacity = commands.add_parser(
@@ -144,7 +160,13 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
         help="Calculate maximum calls for a fractional staffed SLA target.",
     )
     _add_output_arg(fractional_capacity)
-    fractional_capacity.add_argument("--agents", dest="no_agents", type=float, required=True, help="Available fractional agents.")
+    fractional_capacity.add_argument(
+        "--agents",
+        dest="no_agents",
+        type=float,
+        required=True,
+        help="Available fractional productive (on-phone) agents, not shrinkage-inflated scheduled headcount.",
+    )
     _add_sla_arg(fractional_capacity)
     _add_service_time_arg(fractional_capacity)
     _add_aht_arg(fractional_capacity)
@@ -232,11 +254,22 @@ def _add_telecom_commands(categories: argparse._SubParsersAction[argparse.Argume
 
 
 def _add_agents_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = categories.add_parser("agents", help="Detailed agent capacity calculations.")
+    parser = categories.add_parser(
+        "agents",
+        help="Detailed agent capacity calculations (raw formula results, no planning corrections).",
+    )
     parser.set_defaults(help_parser=parser)
     commands = parser.add_subparsers(dest="agents_command", metavar="command")
 
-    required = commands.add_parser("required", help="Calculate agents required for a target SLA.")
+    _RAW_REQUIRED_HELP = (
+        "Calculate on-phone agents required for a target SLA (raw Erlang, "
+        "no shrinkage; use 'staffing required' for the planning chain)."
+    )
+    required = commands.add_parser(
+        "required",
+        help=_RAW_REQUIRED_HELP,
+        description=_RAW_REQUIRED_HELP,
+    )
     _add_output_arg(required)
     _add_sla_arg(required)
     _add_service_time_arg(required)
@@ -281,9 +314,15 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_interval_arg(capacity)
     _set_handler(capacity, "agents.capacity", "calls_per_interval", "call_capacity", call_capacity)
 
+    _RAW_FRACTIONAL_HELP = (
+        "Calculate fractional on-phone agents required for a target SLA "
+        "(raw Erlang, no shrinkage; use 'staffing fractional-required' "
+        "for the planning chain)."
+    )
     fractional_required = commands.add_parser(
         "fractional-required",
-        help="Calculate fractional agents required for a target SLA.",
+        help=_RAW_FRACTIONAL_HELP,
+        description=_RAW_FRACTIONAL_HELP,
     )
     _add_output_arg(fractional_required)
     _add_sla_arg(fractional_required)
@@ -450,7 +489,12 @@ def _add_output_arg(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_agents_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--agents", type=float, required=True, help="Number of agents.")
+    parser.add_argument(
+        "--agents",
+        type=float,
+        required=True,
+        help="Number of productive (on-phone) agents, not shrinkage-inflated scheduled headcount.",
+    )
 
 
 def _add_servers_arg(parser: argparse.ArgumentParser) -> None:
@@ -496,6 +540,18 @@ def _add_patience_arg(parser: argparse.ArgumentParser, required: bool = False) -
     )
 
 
+def _add_shrinkage_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--shrinkage",
+        type=float,
+        required=True,
+        help=(
+            "Fraction of paid time off the phones (breaks, training, absenteeism, "
+            "legally mandated rest), in [0, 1). Required — pass 0 for no shrinkage."
+        ),
+    )
+
+
 def _add_max_occupancy_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--max-occupancy",
@@ -535,6 +591,30 @@ def _handle_function(
             "name": result_name,
             "value": result,
             "unit": unit,
+        },
+    }
+
+
+def _handle_headcount_chain(
+    args: argparse.Namespace,
+    calculation: str,
+    required_func: Callable[..., Any],
+    scheduled_func: Callable[[Any, float], Any],
+) -> dict[str, Any]:
+    inputs = _function_inputs(args, exclude={"shrinkage"})
+    productive = required_func(**inputs)
+    scheduled = scheduled_func(productive, args.shrinkage)
+    return {
+        "schema_version": "2.0",
+        "calculation": calculation,
+        "inputs": _public_inputs(args),
+        "result": {
+            "name": "headcount",
+            "value": {
+                "productive_agents": productive,
+                "scheduled_agents": scheduled,
+            },
+            "unit": "agents",
         },
     }
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import unittest
@@ -28,6 +29,17 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 class CliTests(unittest.TestCase):
+    def test_version_matches_pyproject(self) -> None:
+        pyproject = (REPO_DIR / "pyproject.toml").read_text(encoding="utf-8")
+        match = re.search(r'(?m)^version = "([^"]+)"', pyproject)
+        assert match is not None
+        declared_version = match.group(1)
+
+        result = run_cli("--version")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), f"turbotab {declared_version}")
+
     def test_group_without_command_prints_group_help(self) -> None:
         result = run_cli("sla")
 

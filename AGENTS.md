@@ -234,3 +234,9 @@ files are staged.
   recipe silently teaches them the old surface.
 - Flag any new third-party import — this project intentionally has zero
   runtime dependencies. Conversely, do not flag missing dependency pinning.
+- Flag any new or changed `InputValidationError`/`CalculationError` message,
+  `print()` output, or argparse `help=`/`description=` text written in
+  pt-br, and any new or changed docstring or inline `#` comment written in
+  English — see the Language convention in Code style. This drifted
+  unnoticed for a long time before issue #39 caught it; catching it in
+  review is cheaper than a repo-wide re-audit later.

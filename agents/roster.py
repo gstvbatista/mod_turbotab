@@ -22,13 +22,28 @@ import math
 
 from mod_turbotab.exceptions import InputValidationError
 
-# Tolerância RELATIVA para produtos exatos que estouram o teto por erro de
-# representação de float (ex.: 10 * 1.1 = 11.000000000000002 arredondaria 11
-# para 12). Relativa — e não absoluta como o _SHRINKAGE_EPSILON — porque o
-# ruído de representação é proporcional à magnitude (poucas ULPs, ~1e-16
-# relativo); uma tolerância absoluta engoliria frações genuínas logo acima de
-# um inteiro (ex.: 10 * 1.00000000005 deve arredondar para 11, não 10).
-_ROSTER_RELATIVE_EPSILON: float = 1e-12
+# Normalização de ruído de representação de float: um produto a poucas ULPs
+# de um inteiro (ex.: 10 * 1.1 = 11.000000000000002) é tratado como o próprio
+# inteiro antes do teto. O erro acumulado de representar ``shifts`` e efetuar
+# a multiplicação é <= ~2 ULPs do produto; 4 dá margem. Qualquer tolerância
+# maior que escala de ULP (absoluta ou relativa fixa) engoliria frações
+# genuínas logo acima de um inteiro e subdimensionaria a escala.
+_ULP_TOLERANCE_FACTOR: int = 4
+
+
+def _validate_finite_product(product: float, scheduled_agents: float, shifts: float) -> None:
+    """Rejeita produtos que estouram o intervalo de float.
+
+    Dois valores finitos podem multiplicar para ``inf`` (ex.: ``shifts``
+    próximo de ``1e308``); sem esta checagem o teto levantaria
+    ``OverflowError`` sem tratamento no CLI e a cadeia fracionária emitiria
+    ``Infinity`` na saída JSON — que não é JSON válido.
+    """
+    if not math.isfinite(product):
+        raise InputValidationError(
+            "scheduled_agents * shifts must be finite. "
+            f"Received: scheduled_agents={scheduled_agents}, shifts={shifts}."
+        )
 
 
 def _validate_scheduled_agents(scheduled_agents: float) -> None:
@@ -77,14 +92,19 @@ def rostered_agents(scheduled_agents: int, shifts: float) -> int:
 
     Raises:
         InputValidationError: Se ``shifts`` for menor que ``1.0`` ou
-            não-finito, ou ``scheduled_agents`` for negativo.
+            não-finito, ``scheduled_agents`` for negativo, ou o produto
+            estourar o intervalo de float.
     """
     _validate_scheduled_agents(scheduled_agents)
     _validate_shifts(shifts)
     if shifts == 1.0:
         return int(scheduled_agents)
     product = scheduled_agents * shifts
-    return int(math.ceil(product * (1.0 - _ROSTER_RELATIVE_EPSILON)))
+    _validate_finite_product(product, scheduled_agents, shifts)
+    nearest = round(product)
+    if abs(product - nearest) <= _ULP_TOLERANCE_FACTOR * math.ulp(product):
+        return int(nearest)
+    return int(math.ceil(product))
 
 
 def rostered_fractional_agents(scheduled_agents: float, shifts: float) -> float:
@@ -106,8 +126,11 @@ def rostered_fractional_agents(scheduled_agents: float, shifts: float) -> float:
 
     Raises:
         InputValidationError: Se ``shifts`` for menor que ``1.0`` ou
-            não-finito, ou ``scheduled_agents`` for negativo.
+            não-finito, ``scheduled_agents`` for negativo, ou o produto
+            estourar o intervalo de float.
     """
     _validate_scheduled_agents(scheduled_agents)
     _validate_shifts(shifts)
-    return float(scheduled_agents) * shifts
+    product = float(scheduled_agents) * shifts
+    _validate_finite_product(product, scheduled_agents, shifts)
+    return product

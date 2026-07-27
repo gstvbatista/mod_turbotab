@@ -39,8 +39,16 @@ class RosteredAgentsTests(unittest.TestCase):
 
     def test_genuine_fraction_above_integer_still_rounds_up(self) -> None:
         # Produto genuinamente acima do inteiro (não é ruído de representação):
-        # a tolerância relativa não pode engolir a fração e subdimensionar.
+        # a normalização em escala de ULP não pode engolir a fração e
+        # subdimensionar, por menor que ela seja.
         self.assertEqual(rostered_agents(10, 1.00000000005), 11)
+        self.assertEqual(rostered_agents(10, 1.0000000000005), 11)
+
+    def test_overflowing_product_rejected(self) -> None:
+        # shifts finito pode multiplicar para inf; deve virar erro de
+        # validação, não OverflowError no teto.
+        with self.assertRaises(InputValidationError):
+            rostered_agents(2, 1e308)
 
     def test_invalid_shifts_rejected(self) -> None:
         for bad in (0.0, 0.5, 0.999, -1.0, float("nan"), float("inf")):
@@ -80,6 +88,11 @@ class RosteredFractionalAgentsTests(unittest.TestCase):
     def test_negative_scheduled_agents_rejected(self) -> None:
         with self.assertRaises(InputValidationError):
             rostered_fractional_agents(-0.5, 2.0)
+
+    def test_overflowing_product_rejected(self) -> None:
+        # Sem a checagem, o produto inf sairia como "Infinity" no JSON.
+        with self.assertRaises(InputValidationError):
+            rostered_fractional_agents(2.0, 1e308)
 
     def test_non_finite_scheduled_agents_rejected(self) -> None:
         for bad in (float("nan"), float("inf")):

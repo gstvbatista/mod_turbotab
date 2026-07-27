@@ -16,7 +16,7 @@ turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 
 ```
 
 ```json
-{"calculation": "staffing.required", "inputs": {"aht": 180, "contacts_per_interval": 25.0, "interval": 600.0, "service_time": 20, "shrinkage": 0.3, "sla": 0.8}, "result": {"name": "headcount", "unit": "agents", "value": {"productive_agents": 11, "scheduled_agents": 16}}, "schema_version": "2.1"}
+{"calculation": "staffing.required", "inputs": {"aht": 180, "contacts_per_interval": 25.0, "interval": 600.0, "service_time": 20, "shrinkage": 0.3, "sla": 0.8}, "result": {"name": "headcount", "unit": "agents", "value": {"productive_agents": 11, "scheduled_agents": 16}}, "schema_version": "2.2"}
 ```
 
 ## Why
@@ -48,6 +48,23 @@ turbotab staffing required \
 ```
 
 `--shrinkage` is required: it is the fraction of paid time agents are off the phones (breaks, training, absenteeism, legally mandated rest). Pass `0` explicitly when there is none — the CLI never assumes it.
+
+To go from per-interval seats to operators rostered across the operating day, add the optional `--shifts` flag (operators per seat, `>= 1` — e.g. a 12-hour operation covered by 6-hour shifts needs `2.0`):
+
+```bash
+turbotab staffing required \
+  --sla 0.80 \
+  --service-time 20 \
+  --contacts-per-interval 20.0475 \
+  --interval 3600 \
+  --aht 480 \
+  --shrinkage 0.105263 \
+  --shifts 2.0 \
+  --json
+# result.value: {"productive_agents": 5, "scheduled_agents": 6, "rostered_agents": 12}
+```
+
+Omit `--shifts` for per-interval (intraday) sizing — the `rostered_agents` field only appears when the flag is passed. Note this factor is **not** Erlang occupancy (`--max-occupancy`), even though reference spreadsheets sometimes label it "occupancy".
 
 Achieved SLA for a fixed staffing level:
 
@@ -136,7 +153,7 @@ JSON output is the stable agent contract:
 
 ```json
 {
-  "schema_version": "2.1",
+  "schema_version": "2.2",
   "calculation": "staffing.required",
   "inputs": {
     "aht": 180,
@@ -157,7 +174,7 @@ JSON output is the stable agent contract:
 }
 ```
 
-`staffing required` and `staffing fractional-required` emit the headcount chain under `schema_version` `2.1`; commands whose inputs or result fields were renamed by the contacts terminology sweep use `1.1`; unaffected raw-formula commands (`erlang`, `traffic intensity`, `trunks number`) keep the original `1.0` payloads.
+`staffing required` and `staffing fractional-required` emit the headcount chain under `schema_version` `2.2` (`2.1` plus the optional `rostered_agents` field, present only when `--shifts` is passed); commands whose inputs or result fields were renamed by the contacts terminology sweep use `1.1`; unaffected raw-formula commands (`erlang`, `traffic intensity`, `trunks number`) keep the original `1.0` payloads.
 
 The bundled skill lives at [`skills/mod-turbotab/SKILL.md`](skills/mod-turbotab/SKILL.md). It includes command recipes, unit rules, and agent guardrails.
 
@@ -262,6 +279,7 @@ Notation:
 | `rho_max` | Optional occupancy cap (`max_occupancy`) |
 | `s` | Multi-skill sharing factor (`sharing_factor`) |
 | `S` | Shrinkage factor (`shrinkage`) |
+| `M` | Shift/seat multiplier (`shifts`) |
 
 Core conversions:
 
@@ -345,6 +363,20 @@ N_{\mathrm{scheduled}}^{\mathrm{frac}} = \frac{N_{\mathrm{phones}}^{\mathrm{frac
 
 On the CLI, `S` is the mandatory `--shrinkage` flag of `staffing required` and `staffing fractional-required`; both emit the full `productive_agents`/`scheduled_agents` chain.
 
+Shift/seat multiplier (`rostered_agents`): `scheduled_agents` counts **seats per interval**; covering the operating day takes more than one operator per seat when shifts are shorter than the day. The multiplier `M` (operators per seat, `M >= 1`, fractional allowed) is applied on top of the shrinkage chain, rounding step-wise — seats are made whole before multiplying, which never understaffs relative to rounding once at the end:
+
+```math
+N_{\mathrm{rostered}} = \left\lceil N_{\mathrm{scheduled}} \cdot M \right\rceil
+```
+
+The fractional counterpart (`rostered_fractional_agents`) applies the same multiplier without rounding:
+
+```math
+N_{\mathrm{rostered}}^{\mathrm{frac}} = N_{\mathrm{scheduled}}^{\mathrm{frac}} \cdot M
+```
+
+On the CLI, `M` is the optional `--shifts` flag of `staffing required` and `staffing fractional-required`; when passed, the chain extends to `productive_agents`/`scheduled_agents`/`rostered_agents`. `M` is not Erlang occupancy (`rho_max`), even though reference spreadsheets sometimes overload that name for it.
+
 </details>
 
 <details>
@@ -359,6 +391,7 @@ The CLI is the primary interface, but the Python API remains available.
 | `calculations.multi_skill` | `agents_required_multi` |
 | `agents.capacity` | `agents_required`, `asa`, `agents_asa`, `nb_agents`, `contact_capacity`, `fractional_agents`, `fractional_contact_capacity`, `occupancy`, `is_within_occupancy` |
 | `agents.shrinkage` | `scheduled_agents`, `scheduled_fractional_agents`, `shrinkage_factor`, `agents_required_with_shrinkage` |
+| `agents.roster` | `rostered_agents`, `rostered_fractional_agents` |
 | `queues.queues` | `queued`, `queue_size`, `queue_time`, `service_time`, `sla_metric` |
 | `trunks.trunks` | `number_trunks`, `trunks_required` |
 | `utils` | `min_max`, `int_ceiling`, `secs` |
@@ -420,6 +453,15 @@ agents_required_with_shrinkage(
 
 # Or compose manually from an existing headcount
 scheduled_agents(11, factor)  # 14
+```
+
+Shift/seat multiplier example — turning scheduled seats into rostered operators:
+
+```python
+from mod_turbotab.agents.roster import rostered_agents
+
+# 6 scheduled seats, 12h operation covered by 6h shifts (2 operators per seat)
+rostered_agents(6, 2.0)  # 12
 ```
 
 </details>

@@ -75,7 +75,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["schema_version"], "2.1")
+        self.assertEqual(payload["schema_version"], "2.2")
         self.assertEqual(payload["calculation"], "staffing.required")
         self.assertEqual(payload["inputs"]["shrinkage"], 0.30)
         self.assertEqual(payload["result"]["name"], "headcount")
@@ -149,6 +149,111 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 2)
                 self.assertIn("Shrinkage", result.stderr)
 
+    def test_staffing_required_with_shifts_adds_rostered_agents(self) -> None:
+        result = run_cli(
+            "staffing",
+            "required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "20.0475",
+            "--aht",
+            "480",
+            "--interval",
+            "3600",
+            "--shrinkage",
+            "0.105263",
+            "--shifts",
+            "2.0",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["schema_version"], "2.2")
+        self.assertEqual(payload["inputs"]["shifts"], 2.0)
+        # Caso de referência da issue #26: 5 produtivos -> 6 assentos -> 12 operadores.
+        self.assertEqual(
+            payload["result"]["value"],
+            {"productive_agents": 5, "scheduled_agents": 6, "rostered_agents": 12},
+        )
+
+    def test_staffing_required_without_shifts_omits_rostered_agents(self) -> None:
+        result = run_cli(
+            "staffing",
+            "required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "25",
+            "--aht",
+            "180",
+            "--shrinkage",
+            "0.30",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertNotIn("shifts", payload["inputs"])
+        self.assertNotIn("rostered_agents", payload["result"]["value"])
+
+    def test_staffing_required_invalid_shifts_exits_nonzero(self) -> None:
+        for bad in ("0", "0.5", "-1", "nan", "inf"):
+            with self.subTest(shifts=bad):
+                result = run_cli(
+                    "staffing",
+                    "required",
+                    "--sla",
+                    "0.80",
+                    "--service-time",
+                    "20",
+                    "--contacts-per-interval",
+                    "25",
+                    "--aht",
+                    "180",
+                    "--shrinkage",
+                    "0.30",
+                    "--shifts",
+                    bad,
+                    "--json",
+                )
+
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("Shifts", result.stderr)
+
+    def test_staffing_fractional_required_with_shifts_keeps_chain_fractional(self) -> None:
+        result = run_cli(
+            "staffing",
+            "fractional-required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "25",
+            "--aht",
+            "180",
+            "--shrinkage",
+            "0.30",
+            "--shifts",
+            "1.5",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["schema_version"], "2.2")
+        value = payload["result"]["value"]
+        # A cadeia fracionária não arredonda em nenhum passo, inclusive na escala.
+        self.assertAlmostEqual(
+            value["rostered_agents"], value["scheduled_agents"] * 1.5
+        )
+
     def test_staffing_fractional_required_headcount_chain_json(self) -> None:
         result = run_cli(
             "staffing",
@@ -168,7 +273,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["schema_version"], "2.1")
+        self.assertEqual(payload["schema_version"], "2.2")
         self.assertEqual(payload["calculation"], "staffing.fractional_required")
         self.assertEqual(payload["result"]["name"], "headcount")
         value = payload["result"]["value"]

@@ -18,6 +18,7 @@ from mod_turbotab.agents.capacity import (
     fractional_contact_capacity,
     nb_agents,
 )
+from mod_turbotab.agents.roster import rostered_agents, rostered_fractional_agents
 from mod_turbotab.agents.shrinkage import scheduled_agents, scheduled_fractional_agents
 from mod_turbotab.calculations.erlang import (
     engset_b,
@@ -102,9 +103,10 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_patience_arg(required)
     _add_max_occupancy_arg(required)
     _add_shrinkage_arg(required)
+    _add_shifts_arg(required)
     required.set_defaults(
         handler=lambda args: _handle_headcount_chain(
-            args, "staffing.required", agents_required, scheduled_agents
+            args, "staffing.required", agents_required, scheduled_agents, rostered_agents
         ),
         calculation="staffing.required",
     )
@@ -145,12 +147,14 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_interval_arg(fractional_required)
     _add_patience_arg(fractional_required)
     _add_shrinkage_arg(fractional_required)
+    _add_shifts_arg(fractional_required)
     fractional_required.set_defaults(
         handler=lambda args: _handle_headcount_chain(
             args,
             "staffing.fractional_required",
             fractional_agents,
             scheduled_fractional_agents,
+            rostered_fractional_agents,
         ),
         calculation="staffing.fractional_required",
     )
@@ -552,6 +556,24 @@ def _add_shrinkage_arg(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_shifts_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--shifts",
+        type=float,
+        default=None,
+        help=(
+            "Operators per seat across the operating day, >= 1 (e.g. a 12-hour "
+            "operation covered by 6-hour shifts needs 2.0; fractional values like "
+            "1.5 are accepted). When passed, adds rostered_agents to the headcount "
+            "chain: how many operators to roster to cover the day, on top of the "
+            "per-interval scheduled seats. Reference spreadsheets often mislabel "
+            "this factor 'occupancy' — it is NOT the Erlang occupancy cap "
+            "(the --max-occupancy flag of 'staffing required'). Omit for "
+            "per-interval (intraday) sizing."
+        ),
+    )
+
+
 def _add_max_occupancy_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--max-occupancy",
@@ -602,20 +624,26 @@ def _handle_headcount_chain(
     calculation: str,
     required_func: Callable[..., Any],
     scheduled_func: Callable[[Any, float], Any],
+    rostered_func: Callable[[Any, float], Any],
 ) -> dict[str, Any]:
-    inputs = _function_inputs(args, exclude={"shrinkage"})
+    inputs = _function_inputs(args, exclude={"shrinkage", "shifts"})
     productive = required_func(**inputs)
     scheduled = scheduled_func(productive, args.shrinkage)
+    value: dict[str, Any] = {
+        "productive_agents": productive,
+        "scheduled_agents": scheduled,
+    }
+    # --shifts é opcional: sem a flag, a pergunta de escala não foi feita e o
+    # campo rostered_agents não aparece (issue #26).
+    if args.shifts is not None:
+        value["rostered_agents"] = rostered_func(scheduled, args.shifts)
     return {
-        "schema_version": "2.1",
+        "schema_version": "2.2",
         "calculation": calculation,
         "inputs": _public_inputs(args),
         "result": {
             "name": "headcount",
-            "value": {
-                "productive_agents": productive,
-                "scheduled_agents": scheduled,
-            },
+            "value": value,
             "unit": "agents",
         },
     }

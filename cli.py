@@ -259,6 +259,10 @@ def _add_telecom_commands(categories: argparse._SubParsersAction[argparse.Argume
 
 
 def _add_agents_commands(categories: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    # Contrato da categoria raw: cada comando espelha a ASSINATURA da função
+    # do módulo — parâmetros dela (patience, max_occupancy) viram flags;
+    # etapas da cadeia de planejamento fora da função (shrinkage, shifts)
+    # ficam só em staffing, e o help aponta para lá (decisão no PR #43).
     parser = categories.add_parser(
         "agents",
         help="Detailed agent capacity calculations (raw formula results, no planning corrections).",

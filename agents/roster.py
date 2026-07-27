@@ -22,10 +22,13 @@ import math
 
 from mod_turbotab.exceptions import InputValidationError
 
-# Tolerância para produtos exatos que estouram o teto por erro de float
-# (ex.: 10 * 1.1 = 11.000000000000002 arredondaria 11 para 12). Mesmo
-# padrão do _SHRINKAGE_EPSILON em agents/shrinkage.py.
-_ROSTER_EPSILON: float = 1e-9
+# Tolerância RELATIVA para produtos exatos que estouram o teto por erro de
+# representação de float (ex.: 10 * 1.1 = 11.000000000000002 arredondaria 11
+# para 12). Relativa — e não absoluta como o _SHRINKAGE_EPSILON — porque o
+# ruído de representação é proporcional à magnitude (poucas ULPs, ~1e-16
+# relativo); uma tolerância absoluta engoliria frações genuínas logo acima de
+# um inteiro (ex.: 10 * 1.00000000005 deve arredondar para 11, não 10).
+_ROSTER_RELATIVE_EPSILON: float = 1e-12
 
 
 def _validate_scheduled_agents(scheduled_agents: float) -> None:
@@ -80,7 +83,8 @@ def rostered_agents(scheduled_agents: int, shifts: float) -> int:
     _validate_shifts(shifts)
     if shifts == 1.0:
         return int(scheduled_agents)
-    return int(math.ceil(scheduled_agents * shifts - _ROSTER_EPSILON))
+    product = scheduled_agents * shifts
+    return int(math.ceil(product * (1.0 - _ROSTER_RELATIVE_EPSILON)))
 
 
 def rostered_fractional_agents(scheduled_agents: float, shifts: float) -> float:

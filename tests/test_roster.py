@@ -37,6 +37,11 @@ class RosteredAgentsTests(unittest.TestCase):
         # 10 * 1.1 = 11.000000000000002 em float; o teto não pode virar 12.
         self.assertEqual(rostered_agents(10, 1.1), 11)
 
+    def test_genuine_fraction_above_integer_still_rounds_up(self) -> None:
+        # Produto genuinamente acima do inteiro (não é ruído de representação):
+        # a tolerância relativa não pode engolir a fração e subdimensionar.
+        self.assertEqual(rostered_agents(10, 1.00000000005), 11)
+
     def test_invalid_shifts_rejected(self) -> None:
         for bad in (0.0, 0.5, 0.999, -1.0, float("nan"), float("inf")):
             with self.subTest(shifts=bad):

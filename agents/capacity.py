@@ -262,7 +262,7 @@ def contact_capacity(no_agents: float, sla: float, service_time: int, aht: int, 
     except Exception as e:
         raise CalculationError(f"Error in contact_capacity: {str(e)}") from e
 
-def fractional_agents(sla: float, service_time: int, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
+def fractional_agents(sla: float, service_time: int, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None, max_occupancy: float = None) -> float:
     """Calcula o número fracionário de agentes necessários para atingir o SLA desejado.
 
     Args:
@@ -273,6 +273,10 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
+        max_occupancy (float, optional): Ocupação máxima tolerada por agente (0 < x <= 1).
+            Se None, mantém o comportamento original (sem teto de ocupação). Quando definido,
+            o resultado é ``max(erlang, A / max_occupancy)`` — sem ceil, coerente com a
+            filosofia do caminho fracionário de deixar todo arredondamento ao chamador.
 
     Returns:
         float: Número fracionário de agentes.
@@ -283,6 +287,8 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
     """
     if sla < 0 or contacts_per_interval < 0 or aht <= 0 or service_time < 0:
         raise InputValidationError("Invalid parameters for fractional_agents.")
+    if max_occupancy is not None and not (0 < max_occupancy <= 1):
+        raise InputValidationError("max_occupancy must be in the range (0, 1].")
     try:
         sla = min(sla, 1.0)
         birth_rate: float = contacts_per_interval
@@ -317,6 +323,8 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
             one_agent_effect: float = sl_queued - last_slq
             fract: float = sla - last_slq
             no_agents_sng = (fract / one_agent_effect) + (no_agents - 1)
+        if max_occupancy is not None:
+            no_agents_sng = max(no_agents_sng, traffic_rate / max_occupancy)
         return no_agents_sng
     except Exception as e:
         raise CalculationError(f"Error in fractional_agents: {str(e)}") from e

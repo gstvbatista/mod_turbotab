@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from mod_turbotab.agents.capacity import (
     agents_required,
+    fractional_agents,
     is_within_occupancy,
     occupancy,
 )
@@ -54,6 +55,61 @@ class AgentsRequiredMaxOccupancyTests(unittest.TestCase):
         for bad in (0, -0.1, 1.01, 2):
             with self.assertRaises(InputValidationError) as ctx:
                 agents_required(0.80, 20, 25, 180, max_occupancy=bad)
+            self.assertIn("max_occupancy must be in the range", str(ctx.exception))
+
+
+class FractionalAgentsMaxOccupancyTests(unittest.TestCase):
+    """Espelha os testes do caminho inteiro (issue #42): mesmo cap, sem ceil."""
+
+    def test_default_preserves_baseline(self) -> None:
+        self.assertAlmostEqual(fractional_agents(0.80, 20, 25, 180), 10.285163130544403)
+        self.assertAlmostEqual(
+            fractional_agents(0.80, 20, 25, 180, max_occupancy=None),
+            10.285163130544403,
+        )
+
+    def test_cap_not_binding_keeps_erlang_result(self) -> None:
+        # A/N = 7.5/10.285 ~= 0.73, já abaixo de 0.85: o cap não altera o resultado.
+        self.assertAlmostEqual(
+            fractional_agents(0.80, 20, 25, 180, max_occupancy=0.85),
+            10.285163130544403,
+        )
+
+    def test_cap_binding_lifts_headcount_without_ceil(self) -> None:
+        # 100 chamadas: Erlang fracionário pede ~34.53, mas 30 / 0.85 = 35.294...
+        # Sem ceil — todo arredondamento fica com o chamador.
+        self.assertAlmostEqual(
+            fractional_agents(0.80, 20, 100, 180), 34.529520754021824
+        )
+        self.assertAlmostEqual(
+            fractional_agents(0.80, 20, 100, 180, max_occupancy=0.85),
+            30 / 0.85,
+        )
+
+    def test_cap_of_one_never_lowers_result(self) -> None:
+        # A / 1.0 = 30 < 34.53: o resultado é max(erlang, floor), nunca o menor.
+        self.assertAlmostEqual(
+            fractional_agents(0.80, 20, 100, 180, max_occupancy=1.0),
+            34.529520754021824,
+        )
+
+    def test_cap_composes_with_erlang_a_patience(self) -> None:
+        self.assertAlmostEqual(
+            fractional_agents(0.80, 20, 100, 180, patience=60, max_occupancy=0.85),
+            30 / 0.85,
+        )
+
+    def test_zero_volume_with_cap(self) -> None:
+        # Sem tráfego o floor A/rho é 0 e o resultado segue o interpolado puro.
+        self.assertAlmostEqual(
+            fractional_agents(0.80, 20, 0, 180, max_occupancy=0.85),
+            fractional_agents(0.80, 20, 0, 180),
+        )
+
+    def test_invalid_cap_raises(self) -> None:
+        for bad in (0, -0.1, 1.01, 2):
+            with self.assertRaises(InputValidationError) as ctx:
+                fractional_agents(0.80, 20, 25, 180, max_occupancy=bad)
             self.assertIn("max_occupancy must be in the range", str(ctx.exception))
 
 

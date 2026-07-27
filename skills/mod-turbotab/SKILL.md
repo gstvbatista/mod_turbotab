@@ -39,6 +39,7 @@ python3 -m pip install -e .
 - SLA values are ratios, for example `0.80` for 80%.
 - `shrinkage` is a ratio in `[0, 1)`: the fraction of paid time agents are off the phones (breaks, training, absenteeism, legally mandated rest such as Brazil's NR-17 pause). It is **required** on `staffing required` and `staffing fractional-required`.
 - `shifts` is the shift/seat multiplier, `>= 1` (fractional allowed): operators per seat across the operating day — e.g. a 12-hour operation covered by 6-hour shifts needs `2.0`. It is **optional** on `staffing required` and `staffing fractional-required`; when passed, the output gains `rostered_agents`. It is **not** Erlang occupancy (`--max-occupancy`), even though reference spreadsheets sometimes label this factor "occupancy".
+- `max-occupancy` is the Erlang occupancy cap, a ratio in `(0, 1]`: the maximum sustained `A/N` per agent. It is **optional** on `staffing required` and `staffing fractional-required`; when binding it lifts `productive_agents` to `A / max_occupancy` (ceiled on the integer path, unrounded on the fractional path) before shrinkage is applied.
 
 When the user gives an arrival volume without a time bucket, ask whether it is per 10 minutes, per hour, or another interval before calculating.
 

@@ -339,6 +339,12 @@ N = \max\left(N_{\mathrm{Erlang}},\ \left\lceil \frac{A}{\rho_{\max}} \right\rce
 
 With `max_occupancy=None` the cap is skipped and the Erlang result is returned unchanged.
 
+The fractional counterpart (`max_occupancy` on `fractional_agents`, or `--max-occupancy` on `staffing fractional-required` / `agents fractional-required`) applies the same floor without rounding, leaving all rounding to the caller:
+
+```math
+N^{\mathrm{frac}} = \max\left(N_{\mathrm{Erlang}}^{\mathrm{frac}},\ \frac{A}{\rho_{\max}}\right)
+```
+
 Multi-skill dimensioning (`agents_required_multi`, Option A): each skill group `k` is first sized as an independent Erlang C queue, giving `N_k^{C}`. Skills served by at least one cross-skilled pool then receive the sharing factor `s`, floored so per-skill utilization stays strictly below 100%:
 
 ```math

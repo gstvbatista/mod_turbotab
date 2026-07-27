@@ -66,6 +66,21 @@ turbotab staffing required \
 
 Omit `--shifts` for per-interval (intraday) sizing — the `rostered_agents` field only appears when the flag is passed. Note this factor is **not** Erlang occupancy (`--max-occupancy`), even though reference spreadsheets sometimes label it "occupancy".
 
+To keep sustained agent occupancy under a cap, add the optional `--max-occupancy` flag (ratio in `(0, 1]`), available on both `staffing required` and `staffing fractional-required`. When the cap binds, `productive_agents` is lifted to `A / max_occupancy` before shrinkage — ceiled on the integer path, unrounded on the fractional path:
+
+```bash
+turbotab staffing fractional-required \
+  --sla 0.80 \
+  --service-time 20 \
+  --contacts-per-interval 100 \
+  --aht 180 \
+  --shrinkage 0.30 \
+  --max-occupancy 0.85 \
+  --json
+# result.value: {"productive_agents": 35.294117647058826, "scheduled_agents": 50.420168067226896}
+# (Erlang alone would need ~34.53 productive agents; the 0.85 cap lifts the floor to 30 / 0.85.)
+```
+
 Achieved SLA for a fixed staffing level:
 
 ```bash
@@ -338,6 +353,12 @@ N = \max\left(N_{\mathrm{Erlang}},\ \left\lceil \frac{A}{\rho_{\max}} \right\rce
 ```
 
 With `max_occupancy=None` the cap is skipped and the Erlang result is returned unchanged.
+
+The fractional counterpart (`max_occupancy` on `fractional_agents`, or `--max-occupancy` on `staffing fractional-required` / `agents fractional-required`) applies the same floor without rounding, leaving all rounding to the caller:
+
+```math
+N^{\mathrm{frac}} = \max\left(N_{\mathrm{Erlang}}^{\mathrm{frac}},\ \frac{A}{\rho_{\max}}\right)
+```
 
 Multi-skill dimensioning (`agents_required_multi`, Option A): each skill group `k` is first sized as an independent Erlang C queue, giving `N_k^{C}`. Skills served by at least one cross-skilled pool then receive the sharing factor `s`, floored so per-skill utilization stays strictly below 100%:
 

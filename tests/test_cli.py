@@ -329,6 +329,126 @@ class CliTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("max_occupancy", result.stderr)
 
+    def test_staffing_fractional_required_max_occupancy_json(self) -> None:
+        result = run_cli(
+            "staffing",
+            "fractional-required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "100",
+            "--aht",
+            "180",
+            "--max-occupancy",
+            "0.85",
+            "--shrinkage",
+            "0",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["inputs"]["max_occupancy"], 0.85)
+        # O floor A/rho (30 / 0.85) vence o Erlang fracionário (~34.53), sem ceil.
+        self.assertAlmostEqual(
+            payload["result"]["value"]["productive_agents"], 30 / 0.85
+        )
+
+    def test_staffing_fractional_required_invalid_max_occupancy_exits_nonzero(self) -> None:
+        result = run_cli(
+            "staffing",
+            "fractional-required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "100",
+            "--aht",
+            "180",
+            "--max-occupancy",
+            "1.5",
+            "--shrinkage",
+            "0",
+            "--json",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("max_occupancy", result.stderr)
+
+    def test_staffing_fractional_required_chain_overflow_exits_nonzero(self) -> None:
+        # Regressão: cap pequeno mas não-estourado (5e-307) passava no guard
+        # de fractional_agents, e a divisão seguinte por (1 - 0.9) estourava
+        # scheduled_agents para Infinity com exit 0 — JSON inválido.
+        result = run_cli(
+            "staffing",
+            "fractional-required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "100",
+            "--aht",
+            "180",
+            "--max-occupancy",
+            "5e-307",
+            "--shrinkage",
+            "0.9",
+            "--json",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must be finite", result.stderr)
+        self.assertNotIn("Infinity", result.stdout)
+
+    def test_agents_fractional_required_subnormal_max_occupancy_exits_nonzero(self) -> None:
+        # Regressão: 5e-324 estourava a divisão para inf e o comando saía com
+        # sucesso emitindo "value": Infinity — que não é JSON válido.
+        result = run_cli(
+            "agents",
+            "fractional-required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "100",
+            "--aht",
+            "180",
+            "--max-occupancy",
+            "5e-324",
+            "--json",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("too small for the offered traffic", result.stderr)
+        self.assertNotIn("Infinity", result.stdout)
+
+    def test_agents_fractional_required_max_occupancy_json(self) -> None:
+        result = run_cli(
+            "agents",
+            "fractional-required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "100",
+            "--aht",
+            "180",
+            "--max-occupancy",
+            "0.85",
+            "--json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["inputs"]["max_occupancy"], 0.85)
+        self.assertAlmostEqual(payload["result"]["value"], 30 / 0.85)
+
     def test_queue_sla_json(self) -> None:
         result = run_cli(
             "sla",

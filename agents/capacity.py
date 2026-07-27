@@ -66,9 +66,18 @@ def agents_required(sla: float, service_time: int, contacts_per_interval: float,
             else:
                 lo = mid + 1
         if max_occupancy is not None:
-            occupancy_floor: int = int(math.ceil(traffic_rate / max_occupancy - _OCCUPANCY_EPSILON))
+            # Caps subnormais (ex.: 5e-324) estouram a divisão para inf; sem o
+            # guard o ceil vira OverflowError com mensagem críptica.
+            occupancy_floor_raw: float = traffic_rate / max_occupancy
+            if not math.isfinite(occupancy_floor_raw):
+                raise InputValidationError(
+                    "max_occupancy is too small for the offered traffic (occupancy floor overflows)."
+                )
+            occupancy_floor: int = int(math.ceil(occupancy_floor_raw - _OCCUPANCY_EPSILON))
             return max(lo, occupancy_floor)
         return lo
+    except InputValidationError:
+        raise
     except Exception as e:
         raise CalculationError(f"Error in agents_required: {str(e)}") from e
 
@@ -262,7 +271,7 @@ def contact_capacity(no_agents: float, sla: float, service_time: int, aht: int, 
     except Exception as e:
         raise CalculationError(f"Error in contact_capacity: {str(e)}") from e
 
-def fractional_agents(sla: float, service_time: int, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None) -> float:
+def fractional_agents(sla: float, service_time: int, contacts_per_interval: float, aht: int, interval: float = 600.0, patience: float = None, max_occupancy: float = None) -> float:
     """Calcula o número fracionário de agentes necessários para atingir o SLA desejado.
 
     Args:
@@ -273,6 +282,10 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
         interval (float, optional): Intervalo de planejamento em segundos. Padrão: 600 (10 minutos).
         patience (float, optional): Paciência média do cliente em segundos (Erlang A).
             Se None, usa Erlang C puro.
+        max_occupancy (float, optional): Ocupação máxima tolerada por agente (0 < x <= 1).
+            Se None, mantém o comportamento original (sem teto de ocupação). Quando definido,
+            o resultado é ``max(erlang, A / max_occupancy)`` — sem ceil, coerente com a
+            filosofia do caminho fracionário de deixar todo arredondamento ao chamador.
 
     Returns:
         float: Número fracionário de agentes.
@@ -283,6 +296,8 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
     """
     if sla < 0 or contacts_per_interval < 0 or aht <= 0 or service_time < 0:
         raise InputValidationError("Invalid parameters for fractional_agents.")
+    if max_occupancy is not None and not (0 < max_occupancy <= 1):
+        raise InputValidationError("max_occupancy must be in the range (0, 1].")
     try:
         sla = min(sla, 1.0)
         birth_rate: float = contacts_per_interval
@@ -317,7 +332,18 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
             one_agent_effect: float = sl_queued - last_slq
             fract: float = sla - last_slq
             no_agents_sng = (fract / one_agent_effect) + (no_agents - 1)
+        if max_occupancy is not None:
+            # Caps subnormais (ex.: 5e-324) estouram a divisão para inf; sem o
+            # guard o --json emitiria "Infinity", que não é JSON válido.
+            occupancy_floor: float = traffic_rate / max_occupancy
+            if not math.isfinite(occupancy_floor):
+                raise InputValidationError(
+                    "max_occupancy is too small for the offered traffic (occupancy floor overflows)."
+                )
+            no_agents_sng = max(no_agents_sng, occupancy_floor)
         return no_agents_sng
+    except InputValidationError:
+        raise
     except Exception as e:
         raise CalculationError(f"Error in fractional_agents: {str(e)}") from e
 

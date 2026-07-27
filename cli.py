@@ -146,6 +146,7 @@ def _add_staffing_commands(categories: argparse._SubParsersAction[argparse.Argum
     _add_aht_arg(fractional_required)
     _add_interval_arg(fractional_required)
     _add_patience_arg(fractional_required)
+    _add_max_occupancy_arg(fractional_required)
     _add_shrinkage_arg(fractional_required)
     _add_shifts_arg(fractional_required)
     fractional_required.set_defaults(
@@ -335,6 +336,7 @@ def _add_agents_commands(categories: argparse._SubParsersAction[argparse.Argumen
     _add_aht_arg(fractional_required)
     _add_interval_arg(fractional_required)
     _add_patience_arg(fractional_required)
+    _add_max_occupancy_arg(fractional_required)
     _set_handler(
         fractional_required,
         "agents.fractional_required",
@@ -568,8 +570,8 @@ def _add_shifts_arg(parser: argparse.ArgumentParser) -> None:
             "chain: how many operators to roster to cover the day, on top of the "
             "per-interval scheduled seats. Reference spreadsheets often mislabel "
             "this factor 'occupancy' — it is NOT the Erlang occupancy cap "
-            "(the --max-occupancy flag of 'staffing required'). Omit for "
-            "per-interval (intraday) sizing."
+            "(the --max-occupancy flag). Omit for per-interval (intraday) "
+            "sizing."
         ),
     )
 

@@ -378,6 +378,29 @@ class CliTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("max_occupancy", result.stderr)
 
+    def test_agents_fractional_required_subnormal_max_occupancy_exits_nonzero(self) -> None:
+        # Regressão: 5e-324 estourava a divisão para inf e o comando saía com
+        # sucesso emitindo "value": Infinity — que não é JSON válido.
+        result = run_cli(
+            "agents",
+            "fractional-required",
+            "--sla",
+            "0.80",
+            "--service-time",
+            "20",
+            "--contacts-per-interval",
+            "100",
+            "--aht",
+            "180",
+            "--max-occupancy",
+            "5e-324",
+            "--json",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("too small for the offered traffic", result.stderr)
+        self.assertNotIn("Infinity", result.stdout)
+
     def test_agents_fractional_required_max_occupancy_json(self) -> None:
         result = run_cli(
             "agents",

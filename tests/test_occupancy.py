@@ -57,6 +57,12 @@ class AgentsRequiredMaxOccupancyTests(unittest.TestCase):
                 agents_required(0.80, 20, 25, 180, max_occupancy=bad)
             self.assertIn("max_occupancy must be in the range", str(ctx.exception))
 
+    def test_subnormal_cap_overflow_rejected(self) -> None:
+        # 5e-324 passa na validação de faixa, mas A / cap estoura para inf.
+        with self.assertRaises(InputValidationError) as ctx:
+            agents_required(0.80, 20, 100, 180, max_occupancy=5e-324)
+        self.assertIn("too small for the offered traffic", str(ctx.exception))
+
 
 class FractionalAgentsMaxOccupancyTests(unittest.TestCase):
     """Espelha os testes do caminho inteiro (issue #42): mesmo cap, sem ceil."""
@@ -111,6 +117,13 @@ class FractionalAgentsMaxOccupancyTests(unittest.TestCase):
             with self.assertRaises(InputValidationError) as ctx:
                 fractional_agents(0.80, 20, 25, 180, max_occupancy=bad)
             self.assertIn("max_occupancy must be in the range", str(ctx.exception))
+
+    def test_subnormal_cap_overflow_rejected(self) -> None:
+        # Sem o guard o resultado seria inf — e "Infinity" no --json não é
+        # JSON válido (o comando sairia com sucesso e payload quebrado).
+        with self.assertRaises(InputValidationError) as ctx:
+            fractional_agents(0.80, 20, 100, 180, max_occupancy=5e-324)
+        self.assertIn("too small for the offered traffic", str(ctx.exception))
 
 
 class OccupancyTests(unittest.TestCase):

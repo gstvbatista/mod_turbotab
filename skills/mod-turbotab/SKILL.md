@@ -63,6 +63,13 @@ turbotab staffing required --sla 0.80 --service-time 20 --contacts-per-interval 
 # result.value: {"productive_agents": 5, "scheduled_agents": 6, "rostered_agents": 12}
 ```
 
+Fractional headcount under an occupancy cap (add `--max-occupancy`; when the cap binds, `productive_agents` is lifted to `A / max_occupancy`, unrounded on the fractional path):
+
+```bash
+turbotab staffing fractional-required --sla 0.80 --service-time 20 --contacts-per-interval 100 --aht 180 --shrinkage 0.30 --max-occupancy 0.85 --json
+# result.value: {"productive_agents": 35.294117647058826, "scheduled_agents": 50.420168067226896}
+```
+
 Downstream commands (`sla achieved`, `queue wait`, `telecom trunks`) take the **productive** agents, not the scheduled ones — shrinkage covers who is off the phones, not queue behavior.
 
 Achieved SLA:

@@ -66,9 +66,18 @@ def agents_required(sla: float, service_time: int, contacts_per_interval: float,
             else:
                 lo = mid + 1
         if max_occupancy is not None:
-            occupancy_floor: int = int(math.ceil(traffic_rate / max_occupancy - _OCCUPANCY_EPSILON))
+            # Caps subnormais (ex.: 5e-324) estouram a divisão para inf; sem o
+            # guard o ceil vira OverflowError com mensagem críptica.
+            occupancy_floor_raw: float = traffic_rate / max_occupancy
+            if not math.isfinite(occupancy_floor_raw):
+                raise InputValidationError(
+                    "max_occupancy is too small for the offered traffic (occupancy floor overflows)."
+                )
+            occupancy_floor: int = int(math.ceil(occupancy_floor_raw - _OCCUPANCY_EPSILON))
             return max(lo, occupancy_floor)
         return lo
+    except InputValidationError:
+        raise
     except Exception as e:
         raise CalculationError(f"Error in agents_required: {str(e)}") from e
 
@@ -324,8 +333,17 @@ def fractional_agents(sla: float, service_time: int, contacts_per_interval: floa
             fract: float = sla - last_slq
             no_agents_sng = (fract / one_agent_effect) + (no_agents - 1)
         if max_occupancy is not None:
-            no_agents_sng = max(no_agents_sng, traffic_rate / max_occupancy)
+            # Caps subnormais (ex.: 5e-324) estouram a divisão para inf; sem o
+            # guard o --json emitiria "Infinity", que não é JSON válido.
+            occupancy_floor: float = traffic_rate / max_occupancy
+            if not math.isfinite(occupancy_floor):
+                raise InputValidationError(
+                    "max_occupancy is too small for the offered traffic (occupancy floor overflows)."
+                )
+            no_agents_sng = max(no_agents_sng, occupancy_floor)
         return no_agents_sng
+    except InputValidationError:
+        raise
     except Exception as e:
         raise CalculationError(f"Error in fractional_agents: {str(e)}") from e
 

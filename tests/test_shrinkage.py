@@ -54,6 +54,13 @@ class ScheduledAgentsTests(unittest.TestCase):
                 scheduled_agents(11, bad)
             self.assertIn("Shrinkage must be in the range", str(ctx.exception))
 
+    def test_overflowing_quotient_rejected(self) -> None:
+        # 6e307 agentes finitos com shrinkage 0.9 estouram a divisão para
+        # inf; sem o guard o ceil morreria com OverflowError sem tratamento.
+        with self.assertRaises(InputValidationError) as ctx:
+            scheduled_agents(int(6e307), 0.9)
+        self.assertIn("must be finite", str(ctx.exception))
+
 
 class ScheduledFractionalAgentsTests(unittest.TestCase):
     def test_inflates_without_rounding(self) -> None:
@@ -80,6 +87,13 @@ class ScheduledFractionalAgentsTests(unittest.TestCase):
         for bad in (-0.1, 1.0, 1.5, float("nan"), float("inf")):
             with self.assertRaises(InputValidationError):
                 scheduled_fractional_agents(10.5, bad)
+
+    def test_overflowing_quotient_rejected(self) -> None:
+        # Regressão (PR #43): entradas finitas (6e307 agentes, shrinkage 0.9)
+        # estouravam a divisão para inf e o --json emitia "Infinity".
+        with self.assertRaises(InputValidationError) as ctx:
+            scheduled_fractional_agents(6e307, 0.9)
+        self.assertIn("must be finite", str(ctx.exception))
 
 
 class ShrinkageFactorTests(unittest.TestCase):

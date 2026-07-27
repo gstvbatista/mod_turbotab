@@ -36,6 +36,24 @@ def _validate_agents_on_phone(agents_on_phone: float) -> None:
         )
 
 
+def _validate_finite_quotient(quotient: float, agents_on_phone: float, shrinkage: float) -> None:
+    """Rejeita quocientes que estouram o intervalo de float.
+
+    Um headcount finito dividido por ``1 - shrinkage`` pequeno pode estourar
+    para ``inf`` (ex.: 6e307 agentes com shrinkage 0.9); sem esta checagem a
+    cadeia fracionária emitiria ``Infinity`` na saída JSON — que não é JSON
+    válido — e a inteira morreria com OverflowError sem tratamento no ceil.
+    Mesmo padrão do _validate_finite_product em agents/roster.py.
+    """
+    if not math.isfinite(quotient):
+        # :g compacta o headcount na mensagem — no caminho inteiro ele pode
+        # ser um int de centenas de dígitos.
+        raise InputValidationError(
+            "agents_on_phone / (1 - shrinkage) must be finite. "
+            f"Received: agents_on_phone={agents_on_phone:g}, shrinkage={shrinkage}."
+        )
+
+
 def _validate_shrinkage(shrinkage: float) -> None:
     """Rejeita fatores de shrinkage inválidos.
 
@@ -74,7 +92,9 @@ def scheduled_agents(agents_on_phone: int, shrinkage: float) -> int:
     _validate_shrinkage(shrinkage)
     if shrinkage == 0.0:
         return int(agents_on_phone)
-    return int(math.ceil(agents_on_phone / (1.0 - shrinkage) - _SHRINKAGE_EPSILON))
+    quotient: float = agents_on_phone / (1.0 - shrinkage)
+    _validate_finite_quotient(quotient, agents_on_phone, shrinkage)
+    return int(math.ceil(quotient - _SHRINKAGE_EPSILON))
 
 
 def scheduled_fractional_agents(agents_on_phone: float, shrinkage: float) -> float:
@@ -100,7 +120,9 @@ def scheduled_fractional_agents(agents_on_phone: float, shrinkage: float) -> flo
     """
     _validate_agents_on_phone(agents_on_phone)
     _validate_shrinkage(shrinkage)
-    return float(agents_on_phone) / (1.0 - shrinkage)
+    quotient: float = float(agents_on_phone) / (1.0 - shrinkage)
+    _validate_finite_quotient(quotient, agents_on_phone, shrinkage)
+    return quotient
 
 
 def shrinkage_factor(

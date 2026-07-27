@@ -567,8 +567,9 @@ def _add_shifts_arg(parser: argparse.ArgumentParser) -> None:
             "1.5 are accepted). When passed, adds rostered_agents to the headcount "
             "chain: how many operators to roster to cover the day, on top of the "
             "per-interval scheduled seats. Reference spreadsheets often mislabel "
-            "this factor 'occupancy' — it is NOT Erlang occupancy (see "
-            "--max-occupancy). Omit for per-interval (intraday) sizing."
+            "this factor 'occupancy' — it is NOT the Erlang occupancy cap "
+            "(the --max-occupancy flag of 'staffing required'). Omit for "
+            "per-interval (intraday) sizing."
         ),
     )
 

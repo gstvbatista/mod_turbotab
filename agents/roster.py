@@ -19,25 +19,18 @@ subdimensiona em relação ao arredondamento único no fim.
 """
 
 import math
+from fractions import Fraction
 
 from mod_turbotab.exceptions import InputValidationError
-
-# Normalização de ruído de representação de float: um produto a poucas ULPs
-# de um inteiro (ex.: 10 * 1.1 = 11.000000000000002) é tratado como o próprio
-# inteiro antes do teto. O erro acumulado de representar ``shifts`` e efetuar
-# a multiplicação é <= ~2 ULPs do produto; 4 dá margem. Qualquer tolerância
-# maior que escala de ULP (absoluta ou relativa fixa) engoliria frações
-# genuínas logo acima de um inteiro e subdimensionaria a escala.
-_ULP_TOLERANCE_FACTOR: int = 4
 
 
 def _validate_finite_product(product: float, scheduled_agents: float, shifts: float) -> None:
     """Rejeita produtos que estouram o intervalo de float.
 
     Dois valores finitos podem multiplicar para ``inf`` (ex.: ``shifts``
-    próximo de ``1e308``); sem esta checagem o teto levantaria
-    ``OverflowError`` sem tratamento no CLI e a cadeia fracionária emitiria
-    ``Infinity`` na saída JSON — que não é JSON válido.
+    próximo de ``1e308``); sem esta checagem a cadeia fracionária emitiria
+    ``Infinity`` na saída JSON — que não é JSON válido — e a inteira
+    devolveria um headcount astronômico sem sentido operacional.
     """
     if not math.isfinite(product):
         raise InputValidationError(
@@ -97,13 +90,16 @@ def rostered_agents(scheduled_agents: int, shifts: float) -> int:
     """
     _validate_scheduled_agents(scheduled_agents)
     _validate_shifts(shifts)
+    _validate_finite_product(float(scheduled_agents) * shifts, scheduled_agents, shifts)
     if shifts == 1.0:
         return int(scheduled_agents)
-    product = scheduled_agents * shifts
-    _validate_finite_product(product, scheduled_agents, shifts)
-    nearest = round(product)
-    if abs(product - nearest) <= _ULP_TOLERANCE_FACTOR * math.ulp(product):
-        return int(nearest)
+    # Aritmética racional exata sobre o valor DECIMAL de ``shifts`` (o
+    # shortest-repr do float, que é o que o usuário digitou): elimina
+    # qualquer tolerância. 10 * 1.1 é exatamente 11 (e não o float
+    # 11.000000000000002, que estouraria o teto para 12), enquanto uma
+    # fração genuína de 1 ULP (ex.: 1.0000000000000002) ainda arredonda
+    # para cima — nenhum dos dois lados é engolido.
+    product = Fraction(repr(shifts)) * scheduled_agents
     return int(math.ceil(product))
 
 

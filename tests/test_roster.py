@@ -38,11 +38,12 @@ class RosteredAgentsTests(unittest.TestCase):
         self.assertEqual(rostered_agents(10, 1.1), 11)
 
     def test_genuine_fraction_above_integer_still_rounds_up(self) -> None:
-        # Produto genuinamente acima do inteiro (não é ruído de representação):
-        # a normalização em escala de ULP não pode engolir a fração e
-        # subdimensionar, por menor que ela seja.
+        # Fração genuína acima do inteiro nunca é engolida, por menor que
+        # seja — inclusive 1 ULP acima de 1.0: a aritmética é exata sobre o
+        # valor decimal de shifts, sem janela de tolerância.
         self.assertEqual(rostered_agents(10, 1.00000000005), 11)
         self.assertEqual(rostered_agents(10, 1.0000000000005), 11)
+        self.assertEqual(rostered_agents(10, 1.0000000000000002), 11)
 
     def test_overflowing_product_rejected(self) -> None:
         # shifts finito pode multiplicar para inf; deve virar erro de

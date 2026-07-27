@@ -54,6 +54,9 @@ create an issue from that template.
 - **CI**: `.github/workflows/ci.yml` runs the test suite on Python 3.9-3.13
   for every PR and push to `main`. The `tests` summary job is a required
   status check — PRs merge only when it's green. Merges are squash-only.
+- **Requesting review**: Codex does not review PRs on its own — right after
+  opening a PR, comment `@codex review` on it to trigger the initial review,
+  then wait for the findings before merging.
 - **Review findings**: after pushing a fix for a reviewer finding (Codex or
   human), reply in that thread with what changed and the commit hash (for
   traceability), then mark the conversation as resolved and re-request

@@ -516,4 +516,3 @@ except CalculationError:
 
 - `number_trunks()` uses a fixed blocking threshold of `0.001`.
 - Some zero-value edge cases still return wrapped calculation errors instead of purpose-built validation messages.
-- Intraday simulation is tracked as future work — see issues labeled [`roadmap`](https://github.com/gstvbatista/mod_turbotab/issues?q=is%3Aissue+label%3Aroadmap).
